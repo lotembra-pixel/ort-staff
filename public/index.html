@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0"/>
+<title>חט״ב אורט מדעים ואומנויות נהריה – Staff App</title>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;600;700;800;900&display=swap" rel="stylesheet"/>
+<script>
+const API_BASE = '';
+const APP_TOKEN = '__APP_TOKEN__'; // injected by server at load time – never in source files
+let _sseSource = null;
+const _sseCbs = {};
+function startSSE(paths) {
+  if (_sseSource) _sseSource.close();
+  const url = API_BASE + '/api/stream?token=' + encodeURIComponent(APP_TOKEN) + '&paths=' + paths.map(encodeURIComponent).join(',');
+  _sseSource = new EventSource(url);
+  _sseSource.onmessage = e => {
+    const { path, data } = JSON.parse(e.data);
+    (_sseCbs[path] || []).forEach(cb => cb(data));
+  };
+}
+</script>
+<style>
+:root{--navy:#2c4a96;--mag:#b02a6a;--bg:linear-gradient(145deg,#0d1b4b 0%,#1a2a6e 45%,#2c1654 100%);--card-bg:rgba(255,255,255,.08);--card-border:rgba(255,255,255,.22);--text:#fff;--muted:rgba(255,255,255,.5);--dim:rgba(255,255,255,.3);--topbar:rgba(13,27,75,.95);--nav:rgba(13,27,75,.97);--inp-bg:rgba(255,255,255,.1);--inp-border:rgba(255,255,255,.2);--inp-color:#fff;}
+body.light{--bg:linear-gradient(145deg,#dce8ff 0%,#eef3ff 45%,#f3e8ff 100%);--card-bg:rgba(255,255,255,.75);--card-border:rgba(100,120,200,.3);--text:#1a1a2e;--muted:rgba(30,30,80,.55);--dim:rgba(30,30,80,.35);--topbar:rgba(220,232,255,.96);--nav:rgba(220,232,255,.98);--inp-bg:rgba(255,255,255,.7);--inp-border:rgba(44,74,150,.25);--inp-color:#1a1a2e;}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0;}
+body{font-family:'Assistant',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;max-width:480px;margin:0 auto;direction:rtl;transition:background .35s;}
+input,textarea,select{font-family:'Assistant',sans-serif;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulseM{0%,100%{box-shadow:0 0 0 0 rgba(176,42,106,.5)}70%{box-shadow:0 0 0 14px rgba(176,42,106,0)}}
+@keyframes popIn{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
+@keyframes floatY{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-8px) scale(1.05)}}
+@keyframes sparkle{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.6)}}
+@keyframes heartPop{0%{transform:scale(1)}50%{transform:scale(1.35)}100%{transform:scale(1)}}
+@keyframes glowPulse{0%,100%{box-shadow:0 0 10px rgba(176,42,106,.4)}50%{box-shadow:0 0 28px rgba(176,42,106,.9),0 0 50px rgba(176,42,106,.4)}}
+@keyframes mineCell{0%,100%{box-shadow:0 0 0 0 rgba(176,42,106,.7)}50%{box-shadow:0 0 0 5px rgba(176,42,106,0)}}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.glass{background:var(--card-bg);backdrop-filter:blur(25px);-webkit-backdrop-filter:blur(25px);border:1px solid var(--card-border);border-radius:20px;box-shadow:0 8px 32px rgba(44,74,150,.15);}
+.btn{font-family:'Assistant',sans-serif;cursor:pointer;border:none;transition:transform .1s;font-weight:800;}
+.btn:active{transform:scale(.94);}
+.card-btn{border-radius:22px;padding:20px 14px;text-align:center;color:#fff;border:none;cursor:pointer;transition:transform .15s;position:relative;overflow:hidden;}
+.card-btn:active{transform:scale(.94);}
+.card-btn .icon{font-size:34px;margin-bottom:6px;display:block;}
+.card-btn .title{font-size:16px;font-weight:900;}
+.card-btn .sub{font-size:10px;opacity:.75;margin-top:3px;display:block;}
+.card-btn.af .icon{animation:floatY 2.8s ease-in-out infinite;}
+.card-btn.ap .icon{animation:heartPop 1.2s ease-in-out infinite;}
+.card-btn.ap{animation:glowPulse 2s ease-in-out infinite;}
+.card-btn.ap::before,.card-btn.ap::after{content:"✨";position:absolute;font-size:14px;animation:sparkle 1.4s ease-in-out infinite;}
+.card-btn.ap::before{top:8px;right:10px;animation-delay:.2s;}
+.card-btn.ap::after{bottom:8px;left:10px;animation-delay:.7s;}
+#confetti-canvas{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;display:none;}
+.duty-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.duty-table{width:100%;border-collapse:separate;border-spacing:2px;background:#fff;border-radius:14px;overflow:hidden;}
+.duty-table th{background:#2c4a96;color:#fff;font-size:11px;padding:6px 4px;text-align:center;font-weight:800;}
+.duty-table td{background:#f8f9ff;color:#1a1a2e;font-size:11px;padding:6px 5px;text-align:center;font-weight:600;border:1px solid #e2e8f0;min-width:58px;}
+.duty-table td.sc{background:#eef2ff;color:#2c4a96;font-weight:700;text-align:right;padding-right:8px;min-width:120px;}
+.duty-table td.tc{background:#fce7f3;color:#9d174d;font-weight:800;}
+.duty-table td.mc{background:#b02a6a;color:#fff!important;font-weight:900;border-radius:6px;animation:mineCell 2s ease-in-out infinite;}
+.duty-table tr:hover td{background:#f0f4ff;}
+.pc{background:#fff;color:#1a1a2e;border-radius:16px;padding:14px 16px;margin-bottom:10px;box-shadow:0 4px 16px rgba(44,74,150,.15);border:1px solid #e2e8f0;}
+.pc .dl{font-size:11px;font-weight:700;color:var(--navy);margin-bottom:3px;}
+.pc .ll{font-size:16px;font-weight:800;color:#1a1a2e;}
+.pc.today{border:2px solid var(--mag);}
+.inp{width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--inp-border);background:var(--inp-bg);color:var(--inp-color);font-size:15px;outline:none;margin-bottom:10px;}
+.inp-sm{width:100%;padding:8px 10px;font-size:13px;border-radius:10px;border:1px solid var(--inp-border);background:var(--inp-bg);color:var(--inp-color);outline:none;margin-bottom:8px;}
+.lbl{font-size:12px;color:var(--muted);margin-bottom:4px;font-weight:700;display:block;}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.badge{font-size:11px;border-radius:20px;padding:2px 9px;font-weight:800;display:inline-block;}
+.sn{background:rgba(107,114,128,.25);border:1px solid #6b728088;color:#9ca3af;}
+.sb{background:rgba(44,74,150,.3);border:1px solid var(--navy);color:#93c5fd;}
+.sd{background:rgba(16,185,129,.2);border:1px solid #10b98188;color:#4ade80;}
+#topbar{position:sticky;top:0;z-index:100;background:var(--topbar);backdrop-filter:blur(20px);border-bottom:1px solid var(--card-border);padding:8px 14px;display:flex;align-items:center;gap:8px;}
+#bottomnav{position:fixed;bottom:0;right:0;left:0;max-width:480px;margin:0 auto;background:var(--nav);backdrop-filter:blur(20px);border-top:1px solid var(--card-border);display:flex;z-index:99;}
+.nb{flex:1;padding:10px 0;background:none;border:none;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:2px;font-size:18px;cursor:pointer;font-family:'Assistant',sans-serif;border-top:2px solid transparent;transition:color .2s,border-color .2s;}
+.nb.active{color:#a5b4fc;border-top-color:var(--mag);}
+.nb .n2{font-size:10px;font-weight:700;}
+#app{padding-bottom:80px;}
+.screen{display:none;padding:14px 14px 0;animation:fadeUp .25s ease;}
+.screen.active{display:block;}
+#modal-overlay{position:fixed;inset:0;z-index:999;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;padding:16px;}
+#modal-overlay.open{display:flex;}
+#modal-box{background:linear-gradient(145deg,#1a2a6e,#2c1654);border:1px solid rgba(255,255,255,.2);border-radius:22px;padding:24px;width:100%;max-width:400px;animation:popIn .2s ease;max-height:90vh;overflow-y:auto;}
+#toast{position:fixed;top:80px;left:16px;right:16px;z-index:998;max-width:448px;margin:0 auto;background:linear-gradient(135deg,#10b981,#059669);border-radius:14px;padding:14px 18px;font-size:14px;font-weight:700;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.4);display:none;animation:fadeUp .3s ease;}
+#login-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;background:var(--bg);}
+.skel{border-radius:12px;background:linear-gradient(90deg,rgba(255,255,255,.06) 25%,rgba(255,255,255,.14) 50%,rgba(255,255,255,.06) 75%);background-size:200% 100%;animation:shimmer 1.6s infinite;margin-bottom:12px;}
+.dev-credit{background:linear-gradient(135deg,var(--navy),var(--mag));border-radius:12px;padding:8px 16px;text-align:center;font-size:13px;font-weight:800;color:#fff;letter-spacing:.3px;margin-bottom:14px;box-shadow:0 4px 14px rgba(176,42,106,.4);}
+.search-wrap{position:relative;margin-bottom:12px;}
+.search-wrap input{width:100%;padding:11px 40px 11px 14px;border-radius:14px;border:1px solid var(--inp-border);background:var(--inp-bg);color:var(--inp-color);font-size:14px;outline:none;font-family:'Assistant',sans-serif;}
+.search-wrap .si{position:absolute;right:13px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none;}
+</style>
+</head>
+<body>
+<canvas id="confetti-canvas"></canvas>
+<div id="toast"></div>
+<div id="modal-overlay"><div id="modal-box"></div></div>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div style="width:100%;max-width:400px;animation:fadeUp .5s ease">
+    <div class="dev-credit">💻 פיתוח אפליקציה – לטם מחוליה</div>
+
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="width:220px;height:130px;background:#fff;border-radius:20px;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;padding:12px;box-shadow:0 16px 48px rgba(0,0,0,.5)">
+        <img src="https://i.ibb.co/WvdkmBRK/Screenshot-20260516-065337-Google.jpg"
+             style="max-width:100%;max-height:100%;object-fit:contain"/>
+      </div>
+      <h1 style="font-size:17px;font-weight:900;margin:0 0 4px;line-height:1.3">חט״ב אורט מדעים ואומנויות נהריה</h1>
+      <div style="font-size:13px;color:#818cf8">אנחנו רואים אותך 💙</div>
+    </div>
+
+    <div class="glass" style="padding:24px">
+      <div id="ls-init">
+        <div style="font-size:17px;font-weight:900;margin-bottom:16px;text-align:center">👋 כניסה למערכת</div>
+        <label class="lbl">📧 מייל ארגוני</label>
+        <input id="li-email" class="inp" placeholder="שם@..." type="email" style="direction:ltr;text-align:right" onkeydown="if(event.key==='Enter')loginInit()"/>
+        <label class="lbl">👤 שם מלא</label>
+        <input id="li-name" class="inp" placeholder="ישראל ישראלי" type="text" onkeydown="if(event.key==='Enter')loginInit()"/>
+        <label class="lbl">🔐 קוד גישה</label>
+        <div style="position:relative;margin-bottom:12px">
+          <input id="li-pass" class="inp" placeholder="••••" type="password" style="margin-bottom:0;padding-left:44px;direction:ltr;text-align:center;letter-spacing:4px" onkeydown="if(event.key==='Enter')loginInit()"/>
+          <button onclick="togglePass('li-pass',this)" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:rgba(255,255,255,.5)">👁</button>
+        </div>
+        <!-- Terms checkbox -->
+        <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:12px;margin-bottom:12px">
+          <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer">
+            <input type="checkbox" id="terms-cb" style="width:18px;height:18px;margin-top:2px;accent-color:var(--mag);cursor:pointer;flex-shrink:0"/>
+            <span style="font-size:12px;color:rgba(255,255,255,.8);line-height:1.5">
+              אני מאשר/ת את <button onclick="openTermsModal(event)" style="background:none;border:none;color:#a5b4fc;font-size:12px;cursor:pointer;font-weight:800;font-family:'Assistant',sans-serif;text-decoration:underline;padding:0">תנאי השימוש</button>
+              ומסכים/ה לקבל עדכונים ודיוור מהאפליקציה
+            </span>
+          </label>
+        </div>
+        <div id="li-err" style="display:none;background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);border-radius:10px;padding:10px;font-size:13px;color:#fca5a5;margin-bottom:12px;text-align:center"></div>
+        <button class="btn" onclick="loginInit()" style="width:100%;padding:14px 0;border-radius:14px;background:linear-gradient(135deg,var(--navy),var(--mag));color:#fff;font-size:16px">המשך →</button>
+      </div>
+
+      <div id="ls-setpass" style="display:none">
+        <div id="li-greet" style="font-size:16px;font-weight:900;margin-bottom:4px;text-align:center"></div>
+        <div style="font-size:13px;color:rgba(255,255,255,.5);text-align:center;margin-bottom:16px">בפעם הראשונה – צרי סיסמה אישית</div>
+        <label class="lbl">🔑 סיסמה (לפחות 4 תווים)</label>
+        <input id="li-np" class="inp" type="password" placeholder="בחרי סיסמה"/>
+        <label class="lbl">🔑 אמתי</label>
+        <input id="li-np2" class="inp" type="password" placeholder="הקלידי שוב"/>
+        <div id="li-err2" style="display:none;background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);border-radius:10px;padding:10px;font-size:13px;color:#fca5a5;margin-bottom:12px;text-align:center"></div>
+        <button class="btn" onclick="loginSetPass()" style="width:100%;padding:14px 0;border-radius:14px;background:linear-gradient(135deg,var(--mag),#8b1a5a);color:#fff;font-size:16px;margin-bottom:8px">שמור וכנס ✓</button>
+        <button class="btn" onclick="showLS('init')" style="width:100%;padding:10px 0;border-radius:12px;background:rgba(255,255,255,.08);color:rgba(255,255,255,.6);font-size:14px">← חזור</button>
+      </div>
+
+      <div id="ls-ret" style="display:none">
+        <div id="li-greet2" style="font-size:16px;font-weight:900;margin-bottom:4px;text-align:center"></div>
+        <div style="font-size:13px;color:rgba(255,255,255,.5);text-align:center;margin-bottom:16px">הזיני את הסיסמה האישית שלך</div>
+        <label class="lbl">🔑 סיסמה אישית</label>
+        <div style="position:relative;margin-bottom:10px">
+          <input id="li-rp" class="inp" type="password" placeholder="••••" style="margin-bottom:0;padding-left:44px;direction:ltr;text-align:center;letter-spacing:4px" onkeydown="if(event.key==='Enter')loginReturn()"/>
+          <button onclick="togglePass('li-rp',this)" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:rgba(255,255,255,.5)">👁</button>
+        </div>
+        <div id="li-err3" style="display:none;background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);border-radius:10px;padding:10px;font-size:13px;color:#fca5a5;margin-bottom:12px;text-align:center"></div>
+        <button class="btn" onclick="loginReturn()" style="width:100%;padding:14px 0;border-radius:14px;background:linear-gradient(135deg,var(--navy),var(--mag));color:#fff;font-size:16px;margin-bottom:8px">כניסה →</button>
+        <button class="btn" onclick="showLS('init')" style="width:100%;padding:10px 0;border-radius:12px;background:rgba(255,255,255,.08);color:rgba(255,255,255,.6);font-size:14px">← חזור</button>
+      </div>
+      <div style="text-align:center;font-size:11px;color:rgba(255,255,255,.22);margin-top:14px">גישה מורשית לצוות בית הספר בלבד</div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="main-app" style="display:none">
+  <div id="topbar">
+    <button id="back-btn" class="btn" onclick="goBack()" style="background:rgba(255,255,255,.12);border-radius:10px;width:36px;height:36px;display:none;align-items:center;justify-content:center;color:#fff;font-size:20px">›</button>
+    <div style="height:36px;width:60px;background:#fff;border-radius:8px;overflow:hidden;display:flex;align-items:center;justify-content:center;padding:4px;flex-shrink:0;box-shadow:0 2px 10px rgba(0,0,0,.3)">
+      <img src="https://i.ibb.co/WvdkmBRK/Screenshot-20260516-065337-Google.jpg"
+           style="max-width:100%;max-height:100%;object-fit:contain"/>
+    </div>
+    <div style="flex:1;min-width:0">
+      <div id="topbar-title" style="font-size:13px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">חט״ב אורט מדעים</div>
+      <div id="topbar-sub" style="font-size:10px;color:#818cf8">אנחנו רואים אותך 💙</div>
+    </div>
+    <button id="theme-btn" class="btn" onclick="toggleTheme()" style="background:rgba(255,255,255,.1);border-radius:10px;padding:6px 9px;color:var(--text);font-size:15px">🌙</button>
+    <button id="logout-btn" class="btn" onclick="logout()" style="background:rgba(255,255,255,.1);border-radius:10px;padding:6px 10px;color:rgba(255,255,255,.7);font-size:12px">יציאה</button>
+  </div>
+  <div id="app">
+    <div id="screen-dash" class="screen active"></div>
+    <div id="screen-duty" class="screen"></div>
+    <div id="screen-faults" class="screen"></div>
+    <div id="screen-contacts" class="screen"></div>
+    <div id="screen-tech" class="screen"></div>
+    <div id="screen-board" class="screen"></div>
+    <div id="screen-praise" class="screen"></div>
+    <div id="screen-admin" class="screen"></div>
+  </div>
+  <nav id="bottomnav">
+    <button class="nb active" data-s="dash"   onclick="navTo('dash')">🏠<span class="n2">בית</span></button>
+    <button class="nb" data-s="duty"          onclick="navTo('duty')">📋<span class="n2">תורנות</span></button>
+    <button class="nb" data-s="faults"        onclick="navTo('faults')">🔧<span class="n2">תחזוקה</span></button>
+    <button class="nb" data-s="board"         onclick="navTo('board')">📊<span class="n2">לוח חי</span></button>
+    <button class="nb" data-s="praise"        onclick="navTo('praise')">💖<span class="n2">פירגון</span></button>
+    <button class="nb" id="admin-nav-btn" data-s="admin" onclick="navTo('admin')" style="display:none">⚙️<span class="n2">ניהול</span></button>
+  </nav>
+</div>
+
+<script>
+/* ── Constants ── */
+const ORG_DOMAIN="madaimna.ort.org.il";
+const ADMIN_CODE="Ortna1";
+const ADMIN_USERS=["מירי קנריק","לטם מחוליה","עינת לזר","מאיה קדם","סיון אהרון"];
+const ORI_PHONE="0549933346",KOSTIA_PHONE="0535279015";
+const DAY_NAMES=["ראשון","שני","שלישי","רביעי","חמישי"];
+const SCHOOL_NAME="חט״ב אורט מדעים ואומנויות נהריה";
+
+/* ── Schedule ── */
+const SCHEDULE={
+  breaks:[{id:"a",label:"הפסקה א׳",time:"09:45–10:05"},{id:"b",label:"הפסקה ב׳",time:"11:50–12:05"},{id:"c",label:"הפסקה ג׳",time:"13:35–13:50"},{id:"d",label:"הפסקה ד׳",time:"15:20–15:25"}],
+  stations:["קומה א׳ צפון + מבואה","קומה א׳ דרום + מערב","קומה ב׳ צפון","קומה ב׳ מערב","קומה ב׳ דרום","חצר פנימית + כביש","חצר מערבית","מגרשי משחקים"],
+  a:[["הילה בן ישראל","הילה בן ישראל","שמרית","ענבר","רוחנר שרון"],["פוליצי עדיאל","שלומית","מירה","אורית","עדרי קרן"],["זהבה","חמדה","רויית","מרינה","שירלי אטיאס"],["דנה טובי","חנה לוי","כהן גליה","רוזאן","לימור"],["ברקו חגית","שחר דיין","שירלי אטיאס","יארה","לטם"],["תמיר","נסלי עמית","אוראל עברי","אפי","מריה"],["מירה יארה","לימור שירלי","עדיאל יאנה","שלומית","סיון טל"],["אדית","יוליה.פ","וקניין אורנה","שיר רונן","שחר דיין"]],
+  b:[["קארין","מור","ריקי","שרונה","זיו סיטבון"],["דנית","ויקטוריה","שרית","ריקי","הילה וינברג"],["אורטל","זהבה","מור ספירו","ויקטוריה","יוליה.פ"],["דנה","זיו","שרונה","ישראל אורטל","מרינה"],["שרית","שמרית","שניר","כהן סימה","ענבר"],["איילת השחר","רעות","לטם קארין","אבתיסאם","יארה"],["נסלי","שרונה","נימרין","איילת השחר","תמיר"],["מריה","עמית","אבתיסאם","תמיר","אורנה וקניין"]],
+  c:[["איה","לבנת","דנית","חגית","שיר רונן"],["עמית","אדית","כהן סימה","דנית","אורטל ישראל"],["איה","","שרית","שחר דיין",""],["רווית","נמרוד","שרית","לימור","הילה וינברג"],["מלכה","חנה לוי","רוית","","אוראל עברי"],["עדי יהוד","לבנת","סיון","גליה כהן",""],["ברקו חגית","רוזאן","אוראל עברי","עדיאל",""],["שירלי דנה","איילת השחר","מריה","",""]],
+  d:[["","","","",""],["שמרית","שרון","טל","",""],["","","","",""],["","","טל","",""],["מלכה פורמנוב","","","",""],["","","סיון","",""],["","","","",""],["","","","",""]],
+};
+
+/* ── State ── */
+let session=null,appData={},fbSubs=[],curScreen="dash",screenStack=[],_dataLoaded=false;
+
+/* ── Theme ── */
+(function(){applyTheme(localStorage.getItem("ort_theme")||"dark");})();
+function applyTheme(m){document.body.classList.toggle("light",m==="light");const b=document.getElementById("theme-btn");if(b)b.textContent=m==="light"?"🌙":"☀️";}
+function toggleTheme(){const n=document.body.classList.contains("light")?"dark":"light";localStorage.setItem("ort_theme",n);applyTheme(n);}
+
+/* ── Terms Modal ── */
+function openTermsModal(e){
+  if(e)e.preventDefault();
+  openModal(`
+    <div style="font-size:17px;font-weight:900;margin-bottom:16px;text-align:center;color:#a5b4fc">📋 תנאי שימוש ודיוור</div>
+    <div style="font-size:13px;line-height:1.8;color:rgba(255,255,255,.85)">
+      <div style="font-size:14px;font-weight:800;color:#fbbf24;margin-bottom:6px">1. שימוש מורשה בלבד</div>
+      <p style="margin-bottom:12px">האפליקציה מיועדת לשימוש צוות חט״ב אורט מדעים ואומנויות נהריה בלבד. כל שימוש על ידי גורם שאינו חלק מהצוות מהווה הפרה של תנאי השימוש.</p>
+      <div style="font-size:14px;font-weight:800;color:#fbbf24;margin-bottom:6px">2. כניסה עם מייל ארגוני</div>
+      <p style="margin-bottom:12px">הכניסה למערכת מותרת בעלי מייל ארגוני של בית הספר בלבד. חל איסור מוחלט על שיתוף פרטי גישה עם גורמים חיצוניים.</p>
+      <div style="font-size:14px;font-weight:800;color:#fbbf24;margin-bottom:6px">3. מדיניות פרטיות</div>
+      <p style="margin-bottom:12px">המערכת שומרת מידע בסיסי הנדרש לתפעולה. המידע מאוחסן בשרתי Firebase של Google ומוגן בהתאם לתקני האבטחה של Google. לא יועבר מידע אישי לצדדים שלישיים.</p>
+      <div style="font-size:14px;font-weight:800;color:#fbbf24;margin-bottom:6px">4. הסכמה לדיוור ועדכונים</div>
+      <p style="margin-bottom:12px">בהצטרפות למערכת, המשתמש מסכים לקבל עדכונים ומידע רלוונטי הקשור לתפקודו בבית הספר.</p>
+      <div style="background:rgba(176,42,106,.2);border:1px solid rgba(176,42,106,.4);border-radius:10px;padding:10px;font-size:12px;color:#f9a8d4;text-align:center">
+        💻 פותח על ידי לטם מחוליה · חט״ב אורט מדעים ואומנויות נהריה
+      </div>
+    </div>
+    <button class="btn" onclick="closeModal()" style="width:100%;padding:12px 0;background:linear-gradient(135deg,var(--navy),var(--mag));border-radius:12px;color:#fff;font-size:15px;margin-top:16px">הבנתי ✓</button>
+  `);
+}
+
+/* ── API helpers (Firebase credentials live on the server only) ── */
+function fbListen(path,cb){if(!_sseCbs[path])_sseCbs[path]=[];_sseCbs[path].push(cb);fbSubs.push(()=>{if(_sseCbs[path])_sseCbs[path]=_sseCbs[path].filter(c=>c!==cb);});}
+async function fbWrite(p,v){await fetch(API_BASE+'/api/write',{method:'POST',headers:{'Content-Type':'application/json','x-app-token':APP_TOKEN},body:JSON.stringify({path:p,value:v})});}
+async function fbPush(p,v){const r=await fetch(API_BASE+'/api/push',{method:'POST',headers:{'Content-Type':'application/json','x-app-token':APP_TOKEN},body:JSON.stringify({path:p,value:v})});return r.json();}
+async function fbDel(p){await fetch(API_BASE+'/api/data?path='+encodeURIComponent(p),{method:'DELETE',headers:{'x-app-token':APP_TOKEN}});}
+async function fbPatch(p,v){await fetch(API_BASE+'/api/patch',{method:'POST',headers:{'Content-Type':'application/json','x-app-token':APP_TOKEN},body:JSON.stringify({path:p,value:v})});}
+function lsGet(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch{return d;}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
+
+/* ── Toast ── */
+function toast(msg,dur=3500){const el=document.getElementById("toast");el.textContent=msg;el.style.display="block";clearTimeout(el._t);el._t=setTimeout(()=>el.style.display="none",dur);}
+
+/* ── Modal ── */
+function openModal(html){document.getElementById("modal-box").innerHTML=html;document.getElementById("modal-overlay").classList.add("open");}
+function closeModal(){document.getElementById("modal-overlay").classList.remove("open");}
+document.getElementById("modal-overlay").addEventListener("click",e=>{if(e.target===document.getElementById("modal-overlay"))closeModal();});
+
+/* ── Confetti ── */
+function launchConfetti(){
+  const canvas=document.getElementById("confetti-canvas");canvas.style.display="block";
+  const ctx=canvas.getContext("2d");canvas.width=window.innerWidth;canvas.height=window.innerHeight;
+  const pieces=[],colors=["#f59e0b","#b02a6a","#6366f1","#10b981","#f97316","#06b6d4","#ec4899","#84cc16"];
+  for(let i=0;i<120;i++)pieces.push({x:Math.random()*canvas.width,y:-20,r:Math.random()*8+4,color:colors[~~(Math.random()*colors.length)],vx:(Math.random()-.5)*4,vy:Math.random()*4+2,rot:Math.random()*360,vr:(Math.random()-.5)*8,shape:Math.random()>.5?"rect":"circle"});
+  let frame=0;
+  (function draw(){ctx.clearRect(0,0,canvas.width,canvas.height);pieces.forEach(p=>{ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.rot*Math.PI/180);ctx.fillStyle=p.color;ctx.globalAlpha=.85;p.shape==="rect"?ctx.fillRect(-p.r,-p.r/2,p.r*2,p.r):(ctx.beginPath(),ctx.arc(0,0,p.r,0,Math.PI*2),ctx.fill());ctx.restore();p.x+=p.vx;p.y+=p.vy;p.rot+=p.vr;p.vy+=.05;});if(++frame<180)requestAnimationFrame(draw);else{ctx.clearRect(0,0,canvas.width,canvas.height);canvas.style.display="none";}})();
+}
+
+/* ── Helpers ── */
+function todayStr(){return new Date().toLocaleDateString("sv-SE",{timeZone:"Asia/Jerusalem"});}
+function getCell(bk,si,di){const k=`${bk}_${si}_${di}`;return appData.dutyOverride&&appData.dutyOverride[k]!==undefined?appData.dutyOverride[k]:(SCHEDULE[bk]?.[si]?.[di]??"");}
+function isMyName(name){if(!name||!session)return false;const n=name.trim().toLowerCase();return session.name.trim().split(/\s+/).filter(p=>p.length>1).some(p=>n.includes(p.toLowerCase()));}
+function canAdmin(){return session&&(session.isAdmin||ADMIN_USERS.some(a=>session.name.includes(a.split(" ")[0])));}
+
+/* ── App kill switch ── */
+const KILL_HASH="e851d7cf2dd4a7059f3e9eb09891acd148bad32d93c3227bf6e9c7b65221df27";
+const REVIVE_HASH="a3f8c1d2e7b4096f5a2c8e3d1f7b0a4c6e9d2f5b8a1c4e7f0b3d6a9c2e5f8b1";
+async function hashStr(s){const buf=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(s));return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");}
+async function checkKill(pass){const h=await hashStr(pass);return h===KILL_HASH;}
+function showKilled(){document.getElementById("login-screen").innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:20px;text-align:center"><div style="font-size:48px;margin-bottom:16px">🔒</div><div style="font-size:18px;font-weight:900;color:#fff;margin-bottom:8px">האפליקציה אינה זמינה כרגע</div><div style="font-size:13px;color:rgba(255,255,255,.5)">נסה שוב מאוחר יותר</div><div style="margin-top:32px"><input id="revive-inp" type="password" placeholder="••••" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:12px 16px;color:#fff;font-size:16px;text-align:center;letter-spacing:4px;outline:none;font-family:Assistant,sans-serif" onkeydown="if(event.key==='Enter')tryRevive()"/></div></div>`;}
+async function tryRevive(){const v=document.getElementById("revive-inp")?.value;if(!v)return;if(await checkKill(v)){lsSet("ort_killed",false);location.reload();}}
+
+/* ── Email validation (domain kept secret) ── */
+function isOrgEmail(email){return email.toLowerCase().trim().endsWith("@"+ORG_DOMAIN);}
+function extractNameFromEmail(email){return email.split("@")[0];}
+
+/* ── Skeleton ── */
+function showSkeleton(sid){
+  const el=document.getElementById("screen-"+sid);if(!el)return;
+  el.innerHTML=`<div style="padding:14px"><div class="skel" style="height:22px;width:55%;margin-bottom:18px"></div><div class="skel" style="height:90px;border-radius:18px"></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px"><div class="skel" style="height:90px;border-radius:18px"></div><div class="skel" style="height:90px;border-radius:18px"></div><div class="skel" style="height:90px;border-radius:18px"></div><div class="skel" style="height:90px;border-radius:18px"></div></div><div class="skel" style="height:16px"></div><div class="skel" style="height:12px;width:70%"></div></div>`;
+}
+
+/* ── Navigation ── */
+const TITLES={dash:"ראשי",duty:"📋 תורנויות",faults:"🔧 תחזוקה",contacts:"📱 אנשי קשר",tech:"📡 מידע טכני",board:"📊 לוח משותף",praise:"💖 פירגון",admin:"👑 ניהול"};
+function showScreen(s){
+  document.querySelectorAll(".screen").forEach(el=>el.classList.remove("active"));
+  const el=document.getElementById("screen-"+s);if(el)el.classList.add("active");
+  curScreen=s;const isDash=s==="dash";
+  document.getElementById("back-btn").style.display=isDash?"none":"flex";
+  document.getElementById("logout-btn").style.display=isDash?"block":"none";
+  document.getElementById("topbar-sub").style.display=isDash?"block":"none";
+  document.getElementById("topbar-title").textContent=isDash?(appData.settings?.schoolName||"חט״ב אורט מדעים"):TITLES[s]||"";
+  document.querySelectorAll(".nb").forEach(b=>b.classList.toggle("active",b.dataset.s===s));
+  if(!_dataLoaded){showSkeleton(s);return;}
+  renderScreen(s);
+}
+function navTo(s){if(s!==curScreen)screenStack.push(curScreen);showScreen(s);}
+function goBack(){showScreen(screenStack.pop()||"dash");}
+function renderScreen(s){const m={dash:renderDash,duty:renderDuty,faults:renderFaults,contacts:renderContacts,tech:renderTech,board:renderBoard,praise:renderPraise,admin:renderAdmin};if(m[s])m[s]();}
+
+/* ── Sync ── */
+function startSync(){
+  showSkeleton("dash");
+  let sL=false,cL=false,fL=false;
+  function check(){if(sL&&cL&&fL&&!_dataLoaded){_dataLoaded=true;renderScreen(curScreen);}}
+  const personalPath="personalDuties/"+session.name.replace(/\s+/g,"_");
+  fbListen("settings",d=>{appData.settings=d||{schoolName:SCHOOL_NAME,slogan:"אנחנו רואים אותך 💙"};const sub=document.getElementById("topbar-sub");if(sub)sub.textContent=appData.settings.slogan;sL=true;check();if(_dataLoaded&&curScreen==="dash")renderDash();});
+  fbListen("contacts",d=>{appData.contacts=d?Object.entries(d).map(([k,v])=>({...v,_key:k})):[];cL=true;check();if(_dataLoaded&&curScreen==="contacts")renderContacts();});
+  fbListen("faults",d=>{appData.faults=d?Object.entries(d).map(([k,v])=>({...v,_key:k})):[];fL=true;check();if(_dataLoaded&&(curScreen==="faults"||curScreen==="dash"))renderScreen(curScreen);});
+  fbListen("sharedBoard",d=>{appData.sharedBoard=d?Object.entries(d).map(([k,v])=>({...v,_key:k})):[];if(_dataLoaded&&curScreen==="board")renderBoard();});
+  fbListen("praises",d=>{
+    const today=todayStr();const all=d?Object.entries(d).map(([k,v])=>({...v,_key:k})):[];
+    all.forEach(p=>{if(p.dateKey&&p.dateKey!==today)fbDel("praises/"+p._key);});
+    appData.praises=all.filter(p=>!p.dateKey||p.dateKey===today);
+    if(_dataLoaded&&curScreen==="praise")renderPraise();if(_dataLoaded&&curScreen==="dash")renderDash();
+  });
+  fbListen("dutyOverride",d=>{appData.dutyOverride=d||{};if(_dataLoaded&&(curScreen==="duty"||curScreen==="admin"))renderScreen(curScreen);});
+  fbListen("dutyNotes",d=>{appData.dutyNotes=d||{};if(_dataLoaded&&curScreen==="duty")renderDuty();});
+  fbListen("techInfo",d=>{appData.techInfo=d||{wifi:[{name:"MadeM-TeacheR",password:"MadeM-2022"}],copier:[],gates:[]};if(_dataLoaded&&curScreen==="tech")renderTech();});
+  fbListen(personalPath,d=>{appData.myPersonalDuties=d?Object.entries(d).map(([k,v])=>({...v,_key:k})):[];if(_dataLoaded&&curScreen==="duty")renderDuty();});
+  startSSE(["settings","contacts","faults","sharedBoard","praises","dutyOverride","dutyNotes","techInfo",personalPath]);
+}
+
+/* ══ LOGIN ══ */
+function showLS(step){["init","setpass","ret"].forEach(s=>{const el=document.getElementById("ls-"+s);if(el)el.style.display=s===step?"block":"none";});}
+function togglePass(id,btn){const el=document.getElementById(id);el.type=el.type==="password"?"text":"password";btn.textContent=el.type==="password"?"👁":"🙈";}
+let _lname="",_lemail="";
+
+async function loginInit(){
+  const cb=document.getElementById("terms-cb");
+  if(cb&&!cb.checked)return showErr("li-err","יש לאשר את תנאי השימוש כדי להמשיך");
+
+  /* Kill/Revive toggle – same code */
+  const passVal=document.getElementById("li-pass").value;
+  if(passVal&&await checkKill(passVal)){
+    const killed=lsGet("ort_killed",false);
+    if(killed){lsSet("ort_killed",false);location.reload();}
+    else{lsSet("ort_killed",true);showKilled();}
+    return;
+  }
+
+  const email=document.getElementById("li-email").value.trim();
+  const fullName=document.getElementById("li-name").value.trim();
+  const pass=document.getElementById("li-pass").value;
+  document.getElementById("li-err").style.display="none";
+
+  if(!email)return showErr("li-err","נא להזין כתובת מייל ארגונית");
+  if(!email.includes("@"))return showErr("li-err","כתובת המייל אינה תקינה");
+  if(!isOrgEmail(email))return showErr("li-err","הכניסה מותרת עם מייל ארגוני בלבד");
+  if(!fullName)return showErr("li-err","נא להזין שם מלא");
+
+  _lemail=email;
+  _lname=fullName;
+
+  /* Admin code */
+  if(pass===ADMIN_CODE){
+    const isAdm=ADMIN_USERS.some(a=>fullName.includes(a.split(" ")[0]));
+    enterApp({name:fullName,email,isAdmin:true,isMaint:false,isHQ:isAdm});
+    return;
+  }
+
+  if(!pass)return showErr("li-err","נא להזין קוד גישה");
+
+  const key="ort_u_"+fullName.replace(/[\s.@]/g,"_");
+  if(lsGet(key,null)){
+    document.getElementById("li-greet2").textContent=`ברוכה הבאה חזרה! 😊`;
+    showLS("ret");
+  } else {
+    document.getElementById("li-greet").textContent=`שלום! 👋`;
+    showLS("setpass");
+  }
+}
+
+function loginSetPass(){
+  const np=document.getElementById("li-np").value,np2=document.getElementById("li-np2").value;
+  document.getElementById("li-err2").style.display="none";
+  if(np.length<4)return showErr("li-err2","סיסמה חייבת להיות לפחות 4 תווים");
+  if(np!==np2)return showErr("li-err2","הסיסמאות אינן תואמות");
+  const key="ort_u_"+_lname.replace(/[\s.@]/g,"_");
+  lsSet(key,{pass:np,email:_lemail});
+  enterApp({name:_lname,email:_lemail,isAdmin:false,isMaint:false,isHQ:false});
+}
+
+function loginReturn(){
+  document.getElementById("li-err3").style.display="none";
+  const key="ort_u_"+_lname.replace(/[\s.@]/g,"_");
+  const stored=lsGet(key,null);
+  if(!stored)return showErr("li-err3","משתמש לא נמצא");
+  const rp=document.getElementById("li-rp").value;
+  if(stored.pass&&rp!==stored.pass)return showErr("li-err3","סיסמה שגויה");
+  enterApp({name:_lname,email:_lemail,isAdmin:false,isMaint:false,isHQ:false});
+}
+
+function showErr(id,msg){const el=document.getElementById(id);if(el){el.textContent=msg;el.style.display="block";}}
+
+function enterApp(sess){
+  session=sess;lsSet("ort_session",sess);
+  document.getElementById("login-screen").style.display="none";
+  document.getElementById("main-app").style.display="block";
+  if(sess.isAdmin||sess.isHQ||canAdmin())document.getElementById("admin-nav-btn").style.display="flex";
+  startSync();showScreen("dash");
+}
+
+function logout(){if(_sseSource){_sseSource.close();_sseSource=null;}for(const k in _sseCbs)delete _sseCbs[k];fbSubs.forEach(u=>typeof u==="function"&&u());fbSubs=[];session=null;_dataLoaded=false;lsSet("ort_session",null);location.reload();}
+
+(function(){
+  if(lsGet("ort_killed",false)){showKilled();return;}
+  const s=lsGet("ort_session",null);
+  if(s&&s.name){session=s;}else{showLS("init");return;}
+  document.getElementById("login-screen").style.display="none";
+  document.getElementById("main-app").style.display="block";
+  if(s.isAdmin||s.isHQ||ADMIN_USERS.some(a=>s.name.includes(a.split(" ")[0])))document.getElementById("admin-nav-btn").style.display="flex";
+  startSync();showScreen("dash");
+})();
+
+/* ══ DASHBOARD ══ */
+function renderDash(){
+  const h=new Date().getHours();
+  const gr=h<12?"בוקר טוב ☀️":h<17?"צהריים טובים 🌤️":"ערב טוב 🌙";
+  const today=new Date().getDay(),tc=today>=0&&today<=4?today:-1;
+  const openFaults=(appData.faults||[]).filter(f=>f.status!=="בוצע").length;
+  const newPraises=(appData.praises||[]).filter(p=>p.to===session.name&&!p.seen).length;
+  const myDuties=[];
+  if(tc>=0)SCHEDULE.breaks.forEach(br=>SCHEDULE.stations.forEach((st,si)=>{const n=getCell(br.id,si,tc);if(n&&isMyName(n))myDuties.push({label:br.label,time:br.time,st});}));
+  const cards=[
+    {icon:"📋",title:"תורנויות",sub:"לוח תורנויות",color:"#2c4a96",s:"duty",a:"af"},
+    {icon:"🔧",title:"תחזוקה",sub:"דיווח תקלות",color:"#0e7490",s:"faults",a:"af"},
+    {icon:"📱",title:"אנשי קשר",sub:"מדריך הצוות",color:"#4338ca",s:"contacts",a:"af"},
+    {icon:"📡",title:"מידע טכני",sub:"Wi-Fi · קודים",color:"#0f766e",s:"tech",a:"af"},
+    {icon:"📊",title:"לוח משותף",sub:"טיולים, תרגילים",color:"#1d4ed8",s:"board",a:"af"},
+    {icon:"💖",title:"פירגון",sub:"שלחי ושאי ✨",color:"#b02a6a",s:"praise",a:"ap"},
+  ];
+  document.getElementById("screen-dash").innerHTML=`
+    <div class="dev-credit">💻 פיתוח אפליקציה – לטם מחוליה</div>
+    <div class="glass" style="padding:16px 18px 14px;margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div style="font-size:12px;color:var(--muted)">${gr}</div>
+          <div style="font-size:21px;font-weight:900;line-height:1.2">${session.name}</div>
+          ${session.isAdmin||session.isHQ?'<span class="badge" style="background:rgba(245,158,11,.2);border:1px solid rgba(245,158,11,.5);color:#fbbf24">👑 הנהלה</span>':""}
+          ${session.isMaint?'<span class="badge" style="background:rgba(6,182,212,.2);border:1px solid rgba(6,182,212,.5);color:#67e8f9">🔧 טכנאי</span>':""}
+          ${newPraises>0?`<div style="margin-top:4px"><span class="badge" style="background:rgba(176,42,106,.2);border:1px solid rgba(176,42,106,.5);color:#f9a8d4">💖 ${newPraises} פירגון!</span></div>`:""}
+        </div>
+        <div id="live-clock" style="font-size:11px;color:var(--muted);font-weight:600;text-align:left;line-height:1.6"></div>
+      </div>
+      ${myDuties.length>0?`<div style="margin-top:12px;background:rgba(44,74,150,.3);border-radius:12px;padding:10px 14px;border:1px solid rgba(44,74,150,.5)"><div style="font-size:11px;color:#93c5fd;font-weight:700;margin-bottom:4px">📋 התורנות שלי היום</div>${myDuties.map(d=>`<div style="font-size:13px;font-weight:600;margin-bottom:2px">${d.label} · <span style="color:#fbbf24">${d.st}</span></div>`).join("")}</div>`:`<div style="margin-top:12px;background:rgba(16,185,129,.1);border-radius:12px;padding:10px 14px;border:1px solid rgba(16,185,129,.2);font-size:13px;color:#6ee7b7">✅ אין תורנות היום</div>`}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+      ${cards.map(c=>`<button class="card-btn ${c.a}" onclick="navTo('${c.s}')" style="background:linear-gradient(145deg,${c.color}ee,${c.color}99);box-shadow:0 6px 22px ${c.color}55"><span class="icon">${c.icon}</span><span class="title">${c.title}</span><span class="sub">${c.sub}</span></button>`).join("")}
+    </div>
+    ${openFaults>0?`<button class="btn" onclick="navTo('faults')" style="width:100%;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:14px;padding:12px 16px;color:#fca5a5;display:flex;align-items:center;gap:10px;margin-bottom:14px"><span style="font-size:22px">🔧</span><div style="text-align:right"><div style="font-size:14px;font-weight:800">${openFaults} תקלות פתוחות</div><div style="font-size:11px;opacity:.7">לחץ לצפייה</div></div></button>`:""}
+  `;
+  (function tick(){const el=document.getElementById("live-clock");if(!el)return;const t=new Date();el.innerHTML=t.toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit",second:"2-digit"})+"<br>"+t.toLocaleDateString("he-IL",{weekday:"short",day:"numeric",month:"short"});setTimeout(tick,1000);})();
+}
+
+/* ══ DUTY ══ */
+function parseBreakMins(t){const p=t.split("–");function m(s){const[h,mm]=s.trim().split(":");return+h*60+(+mm||0);}return{start:m(p[0]),end:m(p[1]||p[0])};}
+function getCountdownHTML(){
+  const today=new Date().getDay(),tc=today>=0&&today<=4?today:-1;if(tc<0)return"";
+  const now=new Date(),cur=now.getHours()*60+now.getMinutes();
+  const myB=[];SCHEDULE.breaks.forEach(br=>{SCHEDULE.stations.forEach((_,si)=>{if(isMyName(getCell(br.id,si,tc))&&!myB.find(x=>x.id===br.id))myB.push(br);});});
+  if(!myB.length)return"";
+  for(const br of myB){
+    const{start,end}=parseBreakMins(br.time);
+    if(cur>=start&&cur<end)return`<div style="margin-bottom:12px;background:linear-gradient(135deg,rgba(176,42,106,.35),rgba(44,74,150,.35));border:1px solid rgba(176,42,106,.5);border-radius:14px;padding:12px 16px;display:flex;align-items:center;gap:10px"><span style="font-size:22px">🔴</span><div><div style="font-size:13px;font-weight:900;color:#f9a8d4">את/ה בתורנות עכשיו!</div><div style="font-size:11px;color:rgba(255,255,255,.6)">${br.label} · ${br.time}</div></div></div>`;
+    if(cur<start){const mm=String(start-cur).padStart(2,"0");return`<div style="margin-bottom:12px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.35);border-radius:14px;padding:12px 16px;display:flex;align-items:center;gap:10px"><span style="font-size:22px">⏱️</span><div><div style="font-size:13px;font-weight:900;color:#fbbf24">ההפסקה הבאה שלך בעוד: ${mm} דקות</div><div style="font-size:11px;color:rgba(255,255,255,.6)">${br.label} · ${br.time}</div></div></div>`;}
+  }
+  return"";
+}
+
+function dutySearch(q){
+  _dutyQ=q.trim().toLowerCase();
+  const el=document.getElementById("duty-search-results");
+  if(!el)return;
+  if(!_dutyQ){el.innerHTML="";return;}
+
+  const res=[];
+  SCHEDULE.breaks.forEach(br=>{
+    SCHEDULE.stations.forEach((st,si)=>{
+      [0,1,2,3,4].forEach(di=>{
+        const v=getCell(br.id,si,di);
+        if(v&&v.toLowerCase().includes(_dutyQ)){
+          res.push({br,st,day:DAY_NAMES[di],name:v,isMe:isMyName(v)});
+        }
+      });
+    });
+  });
+
+  if(!res.length){el.innerHTML=`<div style="text-align:center;padding:14px 0;color:var(--dim);font-size:13px">לא נמצאו תוצאות</div>`;return;}
+  el.innerHTML=res.slice(0,20).map(r=>`<div style="padding:10px 12px;border-radius:10px;margin-bottom:6px;background:${r.isMe?"rgba(176,42,106,.2)":"rgba(255,255,255,.05)"};border:1px solid ${r.isMe?"var(--mag)":"rgba(255,255,255,.1)"}"><div style="font-size:12px;color:var(--muted)">${r.br.label} · ${r.br.time} · יום ${r.day}</div><div style="font-size:13px;font-weight:700;color:${r.isMe?"#f9a8d4":"#fff"}">${r.name}</div><div style="font-size:11px;color:var(--muted);margin-top:2px">${r.st}</div></div>`).join("");
+}
+
+function renderDuty(){
+  const today=new Date().getDay(),tc=today>=0&&today<=4?today:-1;
+  let html=`
+    <div class="search-wrap" style="margin-bottom:14px">
+      <span class="si">🔍</span>
+      <input type="text" placeholder="חפש שם מורה בלוח..." oninput="dutySearch(this.value)" style="padding:11px 40px 11px 14px;border-radius:14px;border:1px solid var(--inp-border);background:var(--inp-bg);color:var(--inp-color);font-size:14px;outline:none;font-family:'Assistant',sans-serif;width:100%"/>
+    </div>
+    <div id="duty-search-results"></div>
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      ${[{k:"myduty",l:"📋 תורנויות היום"},{k:"full",l:"📊 לוח שנתי"},{k:"personal",l:"⭐ אישי"}].map((t,i)=>`<button class="btn" id="dtab-${t.k}" onclick="switchDTab('${t.k}')" style="flex:1;padding:9px 0;border-radius:12px;font-size:${i===1?11:13}px;background:${t.k==="myduty"?"linear-gradient(135deg,var(--navy),var(--mag))":"rgba(255,255,255,.08)"};color:#fff;border:${t.k==="myduty"?"none":"1px solid rgba(255,255,255,.15)"}">${t.l}</button>`).join("")}
+    </div>`;
+
+  html+=`<div id="dt-myduty">`;
+  html+=getCountdownHTML();
+  html+=`<div style="font-size:14px;font-weight:900;color:#f9a8d4;margin-bottom:12px">${tc<0?"📋 סוף שבוע":`📋 יום ${DAY_NAMES[tc]}`}</div>`;
+  if(tc>=0){
+    SCHEDULE.breaks.forEach(br=>{
+      let rows="";
+      SCHEDULE.stations.forEach((st,si)=>{
+        const name=getCell(br.id,si,tc);if(!name)return;
+        const me=isMyName(name);
+        const nKey=`note_${br.id}_${si}_${tc}`;
+        const note=(appData.dutyNotes||{})[nKey]||"";
+        const ds=new Date().toISOString().split("T")[0].replace(/-/g,"");
+        const rp=br.time.split("–")[0].trim().split(":");
+        const hh=(rp[0]||"09").padStart(2,"0"),mm=(rp[1]||"00").padStart(2,"0");
+        const endH=String(+hh+Math.floor((+mm+20)/60)).padStart(2,"0"),endM=String((+mm+20)%60).padStart(2,"0");
+        const calUrl=`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent("תורנות – "+st)}&dates=${ds}T${hh}${mm}00/${ds}T${endH}${endM}00&details=${encodeURIComponent("תורנות: "+st)}&ctz=Asia/Jerusalem`;
+        rows+=`<div style="padding:8px 10px;border-radius:10px;margin-bottom:6px;background:${me?"rgba(176,42,106,.2)":"rgba(255,255,255,.04)"};border:${me?"1px solid var(--mag)":"1px solid rgba(255,255,255,.06)"}">
+          <div style="display:flex;justify-content:space-between;align-items:center;${me?"margin-bottom:8px":""}">
+            <div><div style="font-size:11px;color:rgba(255,255,255,.4)">${si+1}. ${st}</div><div style="font-size:13px;font-weight:${me?900:600};color:${me?"#f9a8d4":"#fff"}">${name}</div></div>
+            ${me?`<div style="display:flex;gap:5px;flex-shrink:0"><button class="btn" onclick="openSubModal('${br.id}',${si})" style="background:rgba(249,115,22,.25);border:1px solid rgba(249,115,22,.5);border-radius:8px;padding:5px 8px;color:#fb923c;font-size:11px">🔄</button><a href="${calUrl}" target="_blank"><button class="btn" style="background:linear-gradient(135deg,var(--navy),#4338ca);border-radius:8px;padding:5px 9px;color:#fff;font-size:11px">📅</button></a></div>`:""}
+          </div>
+          ${note?`<div style="font-size:11px;color:#fbbf24;background:rgba(245,158,11,.15);border-radius:6px;padding:5px 8px;margin-bottom:6px;border:1px solid rgba(245,158,11,.3)">📝 ${note}</div>`:""}
+          ${me?`<div style="display:flex;gap:6px;align-items:center"><textarea id="note-${br.id}-${si}" placeholder="עדכון: ציוד שבור, משמעת..." style="flex:1;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:6px 10px;color:#fff;font-size:12px;resize:none;height:40px;outline:none;direction:rtl;font-family:'Assistant',sans-serif">${note}</textarea><button class="btn" onclick="saveDutyNote('${br.id}',${si},${tc})" style="background:linear-gradient(135deg,#10b981,#059669);border-radius:8px;padding:6px 10px;color:#fff;font-size:12px;font-weight:800;flex-shrink:0">💾</button></div>`:""}
+        </div>`;
+      });
+      if(rows)html+=`<div class="glass" style="padding:12px 14px;margin-bottom:10px"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><div style="font-size:13px;font-weight:800;color:#fbbf24">${br.label}</div><div style="font-size:11px;color:rgba(255,255,255,.5)">${br.time}</div></div>${rows}</div>`;
+    });
+  }
+  html+=`</div>`;
+
+  html+=`<div id="dt-full" style="display:none"><div style="font-size:13px;font-weight:900;color:rgba(255,255,255,.7);margin-bottom:12px">📊 לוח תורנויות שנתי</div>
+    ${SCHEDULE.breaks.map(br=>`<div style="margin-bottom:16px"><div style="font-size:13px;font-weight:800;color:#fbbf24;margin-bottom:6px">${br.label} · ${br.time}</div><div class="duty-table-wrap"><table class="duty-table"><thead><tr><th style="text-align:right;padding-right:8px">עמדה</th>${DAY_NAMES.map((d,i)=>`<th style="${i===tc?"background:#b02a6a":""}">${d}</th>`).join("")}</tr></thead><tbody>${SCHEDULE.stations.map((st,si)=>`<tr><td class="sc">${si+1}. ${st}</td>${[0,1,2,3,4].map(di=>{const v=getCell(br.id,si,di);return`<td class="${isMyName(v)?"mc":di===tc?"tc":""}">${v||""}</td>`;}).join("")}</tr>`).join("")}</tbody></table></div></div>`).join("")}
+  </div>`;
+
+  html+=`<div id="dt-personal" style="display:none"><div class="glass" style="padding:14px;margin-bottom:12px;border:1px solid rgba(176,42,106,.4)"><div style="font-size:13px;font-weight:800;color:#f9a8d4;margin-bottom:10px">➕ הוסף תורנות אישית</div><div class="g2" style="gap:8px"><div><span class="lbl">יום</span><select id="pd-day" class="inp-sm" style="direction:rtl">${DAY_NAMES.map((d,i)=>`<option value="${i}">${d}</option>`).join("")}</select></div><div><span class="lbl">שעה</span><input id="pd-time" class="inp-sm" placeholder="09:45"/></div></div><span class="lbl">מיקום</span><input id="pd-loc" class="inp-sm" placeholder="חצר דרומית" style="margin-bottom:8px"/><button class="btn" onclick="addPersonalDuty()" style="width:100%;padding:10px 0;border-radius:10px;background:linear-gradient(135deg,var(--mag),#8b1a5a);color:#fff;font-size:14px;font-weight:800">➕ שמור</button></div><div id="personal-list">${renderPersonalList()}</div></div>`;
+
+  document.getElementById("screen-duty").innerHTML=html;
+}
+
+function switchDTab(t){
+  ["myduty","full","personal"].forEach(k=>{
+    const c=document.getElementById("dt-"+k);if(c)c.style.display=k===t?"block":"none";
+    const b=document.getElementById("dtab-"+k);if(b){b.style.background=k===t?"linear-gradient(135deg,var(--navy),var(--mag))":"rgba(255,255,255,.08)";b.style.border=k===t?"none":"1px solid rgba(255,255,255,.15)";}
+  });
+}
+function renderPersonalList(){
+  const list=appData.myPersonalDuties||[];const today=new Date().getDay();
+  if(!list.length)return`<div style="text-align:center;padding:24px 0;color:rgba(255,255,255,.35);font-size:14px">עדיין לא הוספת תורנויות אישיות</div>`;
+  return list.map(p=>{
+    const isT=+p.day===today;
+    const ds=new Date().toISOString().split("T")[0].replace(/-/g,"");
+    const pts=(p.time||"09:00").split(":");
+    const hh=(pts[0]||"09").padStart(2,"0"),mm=(pts[1]||"00").padStart(2,"0");
+    const endH=String(+hh+Math.floor((+mm+20)/60)).padStart(2,"0"),endM=String((+mm+20)%60).padStart(2,"0");
+    const calUrl=`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent("תורנות – "+(p.location||""))}&dates=${ds}T${hh}${mm}00/${ds}T${endH}${endM}00&details=${encodeURIComponent("תורנות: "+(p.location||""))}&ctz=Asia/Jerusalem`;
+    return`<div class="pc ${isT?"today":""}"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div style="flex:1"><div class="dl">יום ${DAY_NAMES[+p.day]||""} · ${p.time||""}${isT?`<span style="background:var(--mag);color:#fff;border-radius:10px;padding:1px 8px;font-size:10px;margin-right:6px">היום!</span>`:""}</div><div class="ll">${p.location||""}</div></div><div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end"><a href="${calUrl}" target="_blank" style="text-decoration:none"><button class="btn" style="background:linear-gradient(135deg,var(--navy),#4338ca);border-radius:8px;padding:7px 11px;color:#fff;font-size:12px;white-space:nowrap">📅 יומן</button></a><button class="btn" onclick="delPersonalDuty('${p._key}')" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:6px 10px;color:#e53e3e;font-size:12px">🗑</button></div></div></div>`;
+  }).join("");
+}
+async function addPersonalDuty(){const day=document.getElementById("pd-day")?.value,time=document.getElementById("pd-time")?.value.trim(),loc=document.getElementById("pd-loc")?.value.trim();if(!time||!loc){toast("⚠️ נא למלא שעה ומיקום");return;}try{await fbPush("personalDuties/"+session.name.replace(/\s+/g,"_"),{day:+day,time,location:loc});toast("✅ התורנות נשמרה!");}catch(e){toast("❌ "+e.message);}}
+function delPersonalDuty(key){fbDel("personalDuties/"+session.name.replace(/\s+/g,"_")+"/"+key);}
+function saveDutyNote(brId,si,tc){const el=document.getElementById(`note-${brId}-${si}`);if(!el)return;fbPatch("dutyNotes",{[`note_${brId}_${si}_${tc}`]:el.value.trim()});toast("💾 נשמר!");}
+function openSubModal(bk,si){
+  const tc=new Date().getDay(),tcc=tc>=0&&tc<=4?tc:-1,cur=tcc>=0?getCell(bk,si,tcc):"";
+  openModal(`<div style="font-size:16px;font-weight:900;margin-bottom:14px;text-align:center">🔄 עדכון מחליפה</div><label class="lbl">שם המחליפה</label><input id="sub-name" class="inp" placeholder="שם מלא" value="${cur}"/><button class="btn" onclick="confirmSub('${bk}',${si})" style="width:100%;padding:12px 0;background:linear-gradient(135deg,var(--navy),var(--mag));border-radius:12px;color:#fff;font-size:15px;margin-bottom:8px">✓ עדכן</button><button class="btn" onclick="closeModal()" style="width:100%;padding:10px 0;background:rgba(255,255,255,.08);border-radius:12px;color:rgba(255,255,255,.6);font-size:14px">ביטול</button>`);
+}
+function confirmSub(bk,si){const val=document.getElementById("sub-name")?.value.trim();const tc=new Date().getDay(),di=tc>=0&&tc<=4?tc:-1;if(di<0){closeModal();return;}fbPatch("dutyOverride",{[`${bk}_${si}_${di}`]:val});closeModal();toast("✅ המחליפה עודכנה!");}
+
+/* ══ FAULTS ══ */
+function renderFaults(){
+  const faults=appData.faults||[];
+  const canMoveBusy=f=>session.isMaint&&f.status==="חדש";
+  const canConfirm=f=>f.reporter===session.name&&f.status==="בטיפול";
+  const canDel=f=>(session.isAdmin&&f.status==="בוצע")||(f.reporter===session.name&&f.status==="חדש");
+  const stBadge=f=>{const cls=f.status==="חדש"?"sn":f.status==="בטיפול"?"sb":"sd";return`<span class="badge ${cls}">${f.status}</span>`;};
+  document.getElementById("screen-faults").innerHTML=`
+    ${!session.isMaint?`<div class="glass" style="padding:18px;margin-bottom:18px"><div style="font-size:16px;font-weight:900;margin-bottom:14px;color:#93c5fd">🔧 הגשת קריאת תקלה</div><div style="display:flex;gap:10px;margin-bottom:12px">${["מחשוב","אחזקה"].map(c=>`<button class="btn" id="fcat-${c}" onclick="selFC('${c}')" style="flex:1;padding:11px 0;border-radius:12px;font-size:14px;background:${c==="מחשוב"?"linear-gradient(135deg,var(--navy),var(--mag))":"rgba(255,255,255,.08)"};color:#fff;border:${c==="מחשוב"?"none":"1px solid rgba(255,255,255,.15)"}">${c==="מחשוב"?"💻 מחשוב":"🔨 אחזקה"}</button>`).join("")}</div><div id="fault-tech-note" style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:10px">📲 ישלח לאורי</div><label class="lbl">כיתה / מיקום *</label><input id="f-cls" class="inp" placeholder="כיתה 203"/><label class="lbl">תיאור *</label><textarea id="f-desc" class="inp" style="resize:none;height:72px" placeholder="תאר בקצרה..."></textarea><div id="f-sent" style="display:none;font-size:13px;color:#4ade80;text-align:center;margin-bottom:8px;font-weight:700">✅ נשלח!</div><button class="btn" onclick="submitFault()" style="width:100%;padding:13px 0;background:linear-gradient(135deg,var(--mag),#8b1a5a);border-radius:14px;color:#fff;font-size:16px">שלח קריאה 📲</button></div>`:""}
+    <div style="font-size:15px;font-weight:900;color:#93c5fd;margin-bottom:10px">${session.isMaint?"📋 כל התקלות":"📋 תקלות שדווחו"}</div>
+    ${faults.length===0?`<div style="text-align:center;padding:24px 0;color:var(--dim)">אין תקלות</div>`:""}
+    ${faults.map(f=>`<div class="glass" style="padding:14px 16px;margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px"><div style="flex:1"><div style="font-size:15px;font-weight:800">${f.category} · ${f.class||""}</div><div style="font-size:12px;color:var(--muted);margin-top:2px">${f.description||""}</div><div style="font-size:11px;color:var(--dim);margin-top:2px">${f.reporter||""} · ${f.ts||""}${session.isMaint&&f.status==="חדש"?'<span style="color:#fb923c"> · ממתין לטיפולך</span>':""}${f.reporter===session.name&&f.status==="בטיפול"?'<span style="color:#60a5fa"> · ממתין לאישורך</span>':""}</div></div>${stBadge(f)}</div><div style="display:flex;gap:8px;flex-wrap:wrap">${canMoveBusy(f)?`<button class="btn" onclick="setFS('${f._key}','בטיפול')" style="flex:1;padding:9px 0;background:linear-gradient(135deg,var(--navy),#4338ca);border-radius:10px;color:#fff;font-size:13px">🔵 בטיפול</button>`:""}${canConfirm(f)?`<button class="btn" onclick="setFS('${f._key}','בוצע')" style="flex:1;padding:9px 0;background:linear-gradient(135deg,#10b981,#059669);border-radius:10px;color:#fff;font-size:13px">✅ אישור</button>`:""}${canDel(f)?`<button class="btn" onclick="delF('${f._key}')" style="flex:1;padding:9px 0;background:rgba(239,68,68,.2);border:1px solid rgba(239,68,68,.4);border-radius:10px;color:#f87171;font-size:13px">🗑 מחק</button>`:""}</div></div>`).join("")}`;
+  window._fc="מחשוב";
+}
+function selFC(c){window._fc=c;["מחשוב","אחזקה"].forEach(x=>{const b=document.getElementById("fcat-"+x);if(b){b.style.background=x===c?"linear-gradient(135deg,var(--navy),var(--mag))":"rgba(255,255,255,.08)";b.style.border=x===c?"none":"1px solid rgba(255,255,255,.15)";}});const n=document.getElementById("fault-tech-note");if(n)n.textContent=`📲 ישלח ל-${c==="מחשוב"?"אורי":"קוסטיה"}`;}
+function submitFault(){const cls=document.getElementById("f-cls")?.value.trim(),desc=document.getElementById("f-desc")?.value.trim();if(!cls||!desc)return;const cat=window._fc||"מחשוב",ph=cat==="מחשוב"?ORI_PHONE:KOSTIA_PHONE;const ts=new Date().toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"});fbPush("faults",{category:cat,class:cls,description:desc,status:"חדש",reporter:session.name,ts});window.open(`https://wa.me/972${ph.replace(/^0/,"")}?text=${encodeURIComponent(`🔧 תקלה!\nסוג: ${cat}\nכיתה: ${cls}\nתיאור: ${desc}\nמ: ${session.name}`)}`,"_blank");document.getElementById("f-cls").value="";document.getElementById("f-desc").value="";const s=document.getElementById("f-sent");if(s){s.style.display="block";setTimeout(()=>s.style.display="none",3000);}}
+function setFS(k,status){fbPatch("faults/"+k,{status});}
+function delF(k){fbDel("faults/"+k);}
+
+/* ══ CONTACTS ══ */
+let _cq="";
+function renderContacts(){
+  const list=(appData.contacts||[]).filter(c=>!_cq||c.name?.includes(_cq)||c.role?.includes(_cq));
+  const ce=canAdmin();
+  document.getElementById("screen-contacts").innerHTML=`
+    <div style="position:relative;margin-bottom:12px"><span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:14px">🔍</span><input class="inp" placeholder="חפש שם או תפקיד..." style="padding-right:38px;margin-bottom:0" oninput="contactSearch(this.value)"/></div>
+    ${ce?`<button class="btn" onclick="togCF()" style="width:100%;margin-bottom:12px;padding:11px 0;border-radius:14px;background:linear-gradient(135deg,var(--navy),var(--mag));color:#fff;font-size:14px">➕ הוסף איש קשר</button><div id="cf" style="display:none" class="glass" style="padding:16px;margin-bottom:12px"><div class="g2" style="gap:8px"><div><label class="lbl">שם</label><input id="cf-name" class="inp-sm"/></div><div><label class="lbl">תפקיד</label><input id="cf-role" class="inp-sm"/></div></div><div class="g2" style="gap:8px"><div><label class="lbl">טלפון</label><input id="cf-phone" class="inp-sm" style="direction:ltr"/></div><div><label class="lbl">אימייל</label><input id="cf-email" class="inp-sm" style="direction:ltr"/></div></div><div style="display:flex;gap:8px;margin-top:4px"><button class="btn" onclick="saveC()" style="flex:1;padding:10px 0;border-radius:12px;background:linear-gradient(135deg,var(--navy),var(--mag));color:#fff;font-size:14px">שמור ✓</button><button class="btn" onclick="togCF()" style="padding:10px 14px;border-radius:12px;background:rgba(255,255,255,.08);color:rgba(255,255,255,.6);font-size:14px">ביטול</button></div></div>`:""}
+    ${list.map(c=>`<div class="glass" style="padding:14px 16px;margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div><div style="font-size:16px;font-weight:800">${c.name||""}</div><div style="font-size:12px;color:#93c5fd;margin-top:2px">${c.role||""}</div></div>${ce?`<div style="display:flex;gap:6px"><button class="btn" onclick="editC('${c._key}')" style="background:rgba(99,102,241,.2);border:1px solid rgba(99,102,241,.4);border-radius:8px;padding:6px 9px;color:#818cf8;font-size:13px">✏️</button><button class="btn" onclick="fbDel('contacts/${c._key}')" style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:6px 9px;color:#f87171;font-size:13px">🗑</button></div>`:""}</div><div style="display:flex;gap:8px;margin-top:10px">${c.phone?`<a href="tel:${c.phone}" style="flex:1;background:linear-gradient(135deg,var(--navy),#4338ca);border-radius:10px;padding:9px 0;text-align:center;color:#fff;font-size:13px;font-weight:700;text-decoration:none">📞 ${c.phone}</a>`:""}${c.email?`<a href="mailto:${c.email}" style="flex:1;background:rgba(255,255,255,.08);border-radius:10px;padding:9px 0;text-align:center;color:#fff;font-size:13px;font-weight:700;text-decoration:none;border:1px solid rgba(255,255,255,.15)">✉️ אימייל</a>`:""}</div></div>`).join("")}
+    ${list.length===0?`<div style="text-align:center;padding:24px 0;color:var(--dim)">אין אנשי קשר</div>`:""}`;
+  window._editCKey=null;
+}
+function contactSearch(q){_cq=q;renderContacts();}
+function togCF(){const f=document.getElementById("cf");if(f)f.style.display=f.style.display==="none"?"block":"none";window._editCKey=null;}
+function saveC(){const name=document.getElementById("cf-name")?.value.trim(),role=document.getElementById("cf-role")?.value.trim(),phone=document.getElementById("cf-phone")?.value.trim(),email=document.getElementById("cf-email")?.value.trim();if(!name)return;if(window._editCKey)fbPatch("contacts/"+window._editCKey,{name,role,phone,email});else fbPush("contacts",{name,role,phone,email});togCF();}
+function editC(key){const c=(appData.contacts||[]).find(x=>x._key===key);if(!c)return;window._editCKey=key;const f=document.getElementById("cf");if(f)f.style.display="block";document.getElementById("cf-name").value=c.name||"";document.getElementById("cf-role").value=c.role||"";document.getElementById("cf-phone").value=c.phone||"";document.getElementById("cf-email").value=c.email||"";}
+
+/* ══ TECH ══ */
+function renderTech(){
+  const ti=appData.techInfo||{wifi:[],copier:[],gates:[]};
+  const secs=[{key:"wifi",title:"📶 Wi-Fi",color:"#06b6d4",kL:"name",kV:"password",lL:"שם רשת",lV:"סיסמה",getL:i=>i.name,getV:i=>i.password},{key:"copier",title:"🖨️ מדפסות",color:"#8b5cf6",kL:"location",kV:"code",lL:"מיקום",lV:"קוד",getL:i=>i.location,getV:i=>i.code},{key:"gates",title:"🚪 שערים",color:"#f97316",kL:"name",kV:"code",lL:"שם שער",lV:"קוד",getL:i=>i.name,getV:i=>i.code}];
+  document.getElementById("screen-tech").innerHTML=secs.map(s=>`<div style="margin-bottom:22px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font-size:14px;font-weight:800;color:${s.color};display:flex;align-items:center;gap:6px"><div style="width:3px;height:16px;background:${s.color};border-radius:2px"></div>${s.title}</div>${canAdmin()?`<button class="btn" onclick="togTF('${s.key}')" style="background:rgba(255,255,255,.08);border-radius:8px;padding:4px 10px;color:rgba(255,255,255,.7);font-size:12px">＋</button>`:""}</div><div id="tf-${s.key}" style="display:none" class="glass" style="padding:12px;margin-bottom:10px"><label class="lbl">${s.lL}</label><input id="tf-${s.key}-l" class="inp-sm" placeholder="${s.lL}"/><label class="lbl">${s.lV}</label><input id="tf-${s.key}-v" class="inp-sm" placeholder="${s.lV}"/><button class="btn" onclick="addTI('${s.key}','${s.kL}','${s.kV}')" style="width:100%;padding:9px 0;background:linear-gradient(135deg,${s.color},${s.color}99);border-radius:10px;color:#fff;font-size:14px">➕ הוסף</button></div>${(Array.isArray(ti[s.key])?ti[s.key]:Object.values(ti[s.key]||{})).map((item,i)=>`<div class="glass" style="display:flex;justify-content:space-between;align-items:center;padding:13px 16px;margin-bottom:8px"><div><div style="font-size:12px;color:var(--muted)">${s.getL(item)}</div><div style="font-size:21px;font-weight:900;letter-spacing:3px">${s.getV(item)}</div></div><div style="display:flex;gap:6px"><button class="btn" id="tcopy-${s.key}-${i}" onclick="cpTI('${s.getV(item)}','${s.key}-${i}')" style="background:rgba(255,255,255,.12);border-radius:10px;padding:8px 13px;color:#fff;font-size:12px">העתק</button>${canAdmin()?`<button class="btn" onclick="delTI('${s.key}',${i})" style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);border-radius:10px;padding:8px 10px;color:#f87171;font-size:13px">🗑</button>`:""}</div></div>`).join("")}${!(ti[s.key]&&(Array.isArray(ti[s.key])?ti[s.key].length:Object.keys(ti[s.key]).length))?`<div style="text-align:center;padding:10px 0;color:var(--dim);font-size:13px">אין פריטים</div>`:""}</div>`).join("");
+}
+function togTF(k){const el=document.getElementById("tf-"+k);if(el)el.style.display=el.style.display==="none"?"block":"none";}
+function addTI(key,kL,kV){const l=document.getElementById("tf-"+key+"-l")?.value.trim(),v=document.getElementById("tf-"+key+"-v")?.value.trim();if(!l||!v)return;const cur=appData.techInfo?.[key]||[];const arr=Array.isArray(cur)?cur:Object.values(cur);arr.push({[kL]:l,[kV]:v});fbWrite("techInfo/"+key,arr);togTF(key);}
+function delTI(key,idx){const cur=appData.techInfo?.[key]||[];const arr=(Array.isArray(cur)?cur:Object.values(cur)).filter((_,i)=>i!==idx);fbWrite("techInfo/"+key,arr);}
+function cpTI(val,id){navigator.clipboard.writeText(val).catch(()=>{});const btn=document.getElementById("tcopy-"+id);if(btn){btn.textContent="✓ הועתק";btn.style.background="linear-gradient(135deg,#10b981,#059669)";setTimeout(()=>{btn.textContent="העתק";btn.style.background="rgba(255,255,255,.12)";},2000);}}
+
+/* ══ BOARD ══ */
+let _bTab="trips";
+function renderBoard(){
+  document.getElementById("screen-board").innerHTML=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">${[{k:"trips",l:"🚌 טיולים"},{k:"drills",l:"🛡️ תרגילים"},{k:"vaccines",l:"💉 חיסונים"},{k:"faultb",l:"🔧 תקלות"}].map(t=>`<button class="btn" id="btab-${t.k}" onclick="swBTab('${t.k}')" style="padding:8px 14px;border-radius:12px;font-size:13px;background:${t.k===_bTab?"linear-gradient(135deg,var(--navy),var(--mag))":"rgba(255,255,255,.08)"};color:#fff;border:${t.k===_bTab?"none":"1px solid rgba(255,255,255,.15)"}">${t.l}</button>`).join("")}</div><div id="board-content">${renderBTab(_bTab)}</div>`;
+}
+function swBTab(t){_bTab=t;["trips","drills","vaccines","faultb"].forEach(k=>{const b=document.getElementById("btab-"+k);if(b){b.style.background=k===t?"linear-gradient(135deg,var(--navy),var(--mag))":"rgba(255,255,255,.08)";b.style.border=k===t?"none":"1px solid rgba(255,255,255,.15)";}});document.getElementById("board-content").innerHTML=renderBTab(t);}
+function renderBTab(t){const b=appData.sharedBoard||[];if(t==="trips")return renderBTrips(b.filter(e=>e.cat==="trip"));if(t==="drills")return renderBDrills(b.filter(e=>e.cat==="drill"));if(t==="vaccines")return renderBVax(b.filter(e=>e.cat==="vaccine"));if(t==="faultb")return renderBFaults(b.filter(e=>e.cat==="boardFault"));return"";}
+function delBE(k){fbDel("sharedBoard/"+k);}
+function renderBTrips(entries){const allS=entries.length>0&&entries.every(e=>e.signed);return`<div class="glass" style="padding:16px;margin-bottom:14px;border:1px solid rgba(249,115,22,.35)"><div style="font-size:14px;font-weight:800;color:#fb923c;margin-bottom:12px">➕ הוסף כיתה לטיול</div><label class="lbl">👩‍🏫 שם המורה</label><input id="bt-t" class="inp-sm" value="${session.name}"/><label class="lbl">📅 תאריך</label><input id="bt-d" class="inp-sm" placeholder="15/06/2025"/><label class="lbl">📍 מקום</label><input id="bt-p" class="inp-sm" placeholder="תל אביב"/><div class="g2" style="gap:8px;margin-bottom:2px"><div><label class="lbl">כיתה *</label><input id="bt-c" class="inp-sm" placeholder="י׳1"/></div><div><label class="lbl">תלמידים</label><input id="bt-n" class="inp-sm" type="number" placeholder="28"/></div></div><label style="display:flex;align-items:center;gap:10px;margin:10px 0 14px;cursor:pointer"><div id="bt-sb" onclick="togSign(this)" style="width:24px;height:24px;border-radius:6px;border:2px solid rgba(255,255,255,.3);background:transparent;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;font-size:14px;transition:all .2s"></div><span style="font-size:13px;font-weight:700">✍️ אישור יציאה חתום</span></label><button class="btn" onclick="addBTrip()" style="width:100%;padding:12px 0;background:linear-gradient(135deg,#f97316,#ea580c);border-radius:12px;color:#fff;font-size:15px;font-weight:800">📢 פרסם</button></div>${entries.length>0?`<div class="glass" style="padding:10px 14px;margin-bottom:10px;border:1px solid ${allS?"rgba(16,185,129,.4)":"rgba(249,115,22,.4)"}"><div style="font-size:13px;font-weight:800;color:${allS?"#4ade80":"#fb923c"}">${allS?"✅ כל האישורים חתומים":`⚠️ ${entries.filter(e=>!e.signed).length} ללא חתימה`}</div></div>`:""}${entries.map(e=>`<div class="glass" style="padding:14px 16px;margin-bottom:10px;border:1px solid ${e.signed?"rgba(16,185,129,.35)":"rgba(249,115,22,.25)"}"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="flex:1"><div style="font-size:15px;font-weight:900;margin-bottom:6px">כיתה ${e.class||""}</div><div style="display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:12px"><span style="color:rgba(255,255,255,.5)">👩‍🏫</span><span style="font-weight:700">${e.teacher||""}</span>${e.date?`<span style="color:rgba(255,255,255,.5)">📅</span><span style="font-weight:700">${e.date}</span>`:""}${e.place?`<span style="color:rgba(255,255,255,.5)">📍</span><span style="font-weight:700">${e.place}</span>`:""}<span style="color:rgba(255,255,255,.5)">👥</span><span style="font-weight:700">${e.count||0}</span><span style="color:rgba(255,255,255,.5)">✍️</span><span style="font-weight:700;color:${e.signed?"#4ade80":"#f87171"}">${e.signed?"✅":"❌"}</span></div></div>${(session.isAdmin||e.teacher===session.name)?`<button class="btn" onclick="delBE('${e._key}')" style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:6px 9px;color:#f87171;font-size:13px;margin-right:8px">🗑</button>`:""}</div></div>`).join("")}${entries.length===0?`<div style="text-align:center;padding:24px 0;color:var(--dim)">אין דיווחי טיול</div>`:""}`;  }
+window._bSigned=false;
+function togSign(box){window._bSigned=!window._bSigned;box.style.background=window._bSigned?"#10b981":"transparent";box.style.borderColor=window._bSigned?"#10b981":"rgba(255,255,255,.3)";box.textContent=window._bSigned?"✓":"";}
+function addBTrip(){const cls=document.getElementById("bt-c")?.value.trim();if(!cls){toast("⚠️ נא להזין כיתה");return;}const ts=new Date().toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"});fbPush("sharedBoard",{cat:"trip",teacher:document.getElementById("bt-t")?.value.trim()||session.name,date:document.getElementById("bt-d")?.value.trim()||"",place:document.getElementById("bt-p")?.value.trim()||"",class:cls,count:+(document.getElementById("bt-n")?.value||0),signed:window._bSigned,ts});window._bSigned=false;toast("✅ פורסם!");}
+function renderBDrills(entries){return`<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px"><button class="btn" onclick="openDrillF('rockets')" style="background:linear-gradient(135deg,#ef4444,#b91c1c);border-radius:18px;padding:22px 10px;text-align:center;color:#fff"><div style="font-size:28px;margin-bottom:6px">🚀</div><div style="font-size:13px;font-weight:900">ירי רקטות</div></button><button class="btn" onclick="openDrillF('earthquake')" style="background:linear-gradient(135deg,#f97316,#c2410c);border-radius:18px;padding:22px 10px;text-align:center;color:#fff"><div style="font-size:28px;margin-bottom:6px">🌍</div><div style="font-size:13px;font-weight:900">רעידת אדמה</div></button></div><div id="drill-form"></div>${entries.map(e=>`<div class="glass" style="padding:12px 16px;margin-bottom:8px;border:1px solid ${e.drill==="rockets"?"rgba(239,68,68,.3)":"rgba(249,115,22,.3)"}"><div style="display:flex;justify-content:space-between"><div><div style="font-size:14px;font-weight:900">${e.drill==="rockets"?"🚀":"🌍"} כיתה ${e.class||""}</div><div style="font-size:12px;color:var(--muted);margin-top:2px">👩‍🏫 ${e.teacher||""} · 👥 ${e.count||0}${e.shelter?" · 🏠 "+e.shelter:""}</div></div>${(session.isAdmin||e.teacher===session.name)?`<button class="btn" onclick="delBE('${e._key}')" style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:6px 9px;color:#f87171;font-size:13px">🗑</button>`:""}</div></div>`).join("")}${entries.length===0?`<div style="text-align:center;padding:10px 0;color:var(--dim)">אין דיווחי תרגיל</div>`:""}`;  }
+function openDrillF(type){document.getElementById("drill-form").innerHTML=`<div class="glass" style="padding:14px;margin-bottom:12px;border:1px solid ${type==="rockets"?"rgba(239,68,68,.4)":"rgba(249,115,22,.4)"}"><div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><span style="font-size:20px">${type==="rockets"?"🚀":"🌍"}</span><div style="font-size:14px;font-weight:900;flex:1">${type==="rockets"?"ירי רקטות":"רעידת אדמה"}</div><button class="btn" onclick="document.getElementById('drill-form').innerHTML=''" style="background:rgba(255,255,255,.1);border-radius:8px;padding:4px 10px;color:rgba(255,255,255,.6);font-size:12px">סגור</button></div><label class="lbl">שם המורה</label><input id="dr-t" class="inp-sm" value="${session.name}"/><div class="g2" style="gap:8px"><div><label class="lbl">כיתה *</label><input id="dr-c" class="inp-sm" placeholder="י׳1"/></div><div><label class="lbl">תלמידים</label><input id="dr-n" class="inp-sm" type="number" placeholder="28"/></div></div>${type==="rockets"?`<label class="lbl">מקלט</label><input id="dr-s" class="inp-sm" placeholder="מקלט 3"/>`:"<input id='dr-s' style='display:none'/>"}<button class="btn" onclick="addBDrill('${type}')" style="width:100%;padding:10px 0;background:${type==="rockets"?"linear-gradient(135deg,#ef4444,#b91c1c)":"linear-gradient(135deg,#f97316,#c2410c)"};border-radius:10px;color:#fff;font-size:14px;margin-top:6px">📢 פרסם</button></div>`;}
+function addBDrill(type){const cls=document.getElementById("dr-c")?.value.trim();if(!cls)return;const ts=new Date().toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"});fbPush("sharedBoard",{cat:"drill",drill:type,teacher:document.getElementById("dr-t")?.value.trim()||session.name,class:cls,count:+(document.getElementById("dr-n")?.value||0),shelter:document.getElementById("dr-s")?.value.trim()||"",ts});document.getElementById("drill-form").innerHTML="";}
+function renderBVax(entries){return`<div class="glass" style="padding:12px;margin-bottom:12px;border:1px solid rgba(16,185,129,.3)"><div class="g2" style="gap:8px"><div><label class="lbl">כיתה *</label><input id="bv-c" class="inp-sm" placeholder="י׳1"/></div><div><label class="lbl">תאריך *</label><input id="bv-d" class="inp-sm" placeholder="01/09/2025"/></div></div><button class="btn" onclick="addBVax()" style="width:100%;padding:10px 0;background:linear-gradient(135deg,#10b981,#059669);border-radius:10px;color:#fff;font-size:14px;margin-top:4px">📢 פרסם</button></div>${entries.map(e=>`<div class="glass" style="padding:12px 16px;margin-bottom:8px;border:1px solid rgba(16,185,129,.2);display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:15px;font-weight:800">כיתה ${e.class||""}</div><div style="font-size:12px;color:#34d399;margin-top:2px">📅 ${e.date||""} · ${e.reporter||""}</div></div>${(session.isAdmin||e.reporter===session.name)?`<button class="btn" onclick="delBE('${e._key}')" style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:6px 9px;color:#f87171;font-size:13px">🗑</button>`:""}</div>`).join("")}${entries.length===0?`<div style="text-align:center;padding:10px 0;color:var(--dim)">אין דיווחי חיסונים</div>`:""}`;  }
+function addBVax(){const cls=document.getElementById("bv-c")?.value.trim(),date=document.getElementById("bv-d")?.value.trim();if(!cls||!date)return;fbPush("sharedBoard",{cat:"vaccine",class:cls,date,reporter:session.name,ts:new Date().toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"})});}
+function renderBFaults(entries){return`<div class="glass" style="padding:12px;margin-bottom:12px"><div style="display:flex;gap:8px;margin-bottom:10px">${["מחשוב","אחזקה"].map(c=>`<button class="btn" id="bfc-${c}" onclick="selBFC('${c}')" style="flex:1;padding:9px 0;border-radius:10px;font-size:13px;background:${c==="מחשוב"?"linear-gradient(135deg,var(--navy),var(--mag))":"rgba(255,255,255,.08)"};color:#fff">${c==="מחשוב"?"💻 מחשוב":"🔨 אחזקה"}</button>`).join("")}</div><label class="lbl">כיתה *</label><input id="bf-c" class="inp-sm" placeholder="כיתה 203"/><label class="lbl">פירוט *</label><textarea id="bf-d" class="inp-sm" style="height:60px;resize:none" placeholder="תאר..."></textarea><div id="bf-n" style="font-size:11px;color:rgba(255,255,255,.4);margin-bottom:8px">📲 ישלח לאורי</div><div id="bf-s" style="display:none;font-size:12px;color:#4ade80;text-align:center;margin-bottom:6px;font-weight:700">✅ נשלח!</div><button class="btn" onclick="addBFault()" style="width:100%;padding:10px 0;background:linear-gradient(135deg,var(--mag),#8b1a5a);border-radius:10px;color:#fff;font-size:14px">📢 פרסם ושלח ווצאפ</button></div>${entries.map(e=>`<div class="glass" style="padding:12px 16px;margin-bottom:8px"><div style="display:flex;justify-content:space-between"><div><div style="font-size:14px;font-weight:800">${e.category||""} · כיתה ${e.class||""}</div><div style="font-size:12px;color:var(--muted);margin-top:2px">👩‍🏫 ${e.reporter||""} · ${e.description||""}</div></div>${(session.isAdmin||e.reporter===session.name)?`<button class="btn" onclick="delBE('${e._key}')" style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:6px 9px;color:#f87171;font-size:13px">🗑</button>`:""}</div></div>`).join("")}${entries.length===0?`<div style="text-align:center;padding:10px 0;color:var(--dim)">אין תקלות בלוח</div>`:""}`;  }
+window._bfc="מחשוב";
+function selBFC(c){window._bfc=c;["מחשוב","אחזקה"].forEach(x=>{const b=document.getElementById("bfc-"+x);if(b)b.style.background=x===c?"linear-gradient(135deg,var(--navy),var(--mag))":"rgba(255,255,255,.08)";});const n=document.getElementById("bf-n");if(n)n.textContent=`📲 ישלח ל-${c==="מחשוב"?"אורי":"קוסטיה"}`;}
+function addBFault(){const cls=document.getElementById("bf-c")?.value.trim(),desc=document.getElementById("bf-d")?.value.trim();if(!cls||!desc)return;const cat=window._bfc||"מחשוב",ph=cat==="מחשוב"?ORI_PHONE:KOSTIA_PHONE;fbPush("sharedBoard",{cat:"boardFault",category:cat,class:cls,description:desc,reporter:session.name,ts:new Date().toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"})});window.open(`https://wa.me/972${ph.replace(/^0/,"")}?text=${encodeURIComponent(`🔧 תקלה!\nסוג: ${cat}\nכיתה: ${cls}\nתיאור: ${desc}\nמ: ${session.name}`)}`,"_blank");document.getElementById("bf-c").value="";document.getElementById("bf-d").value="";const s=document.getElementById("bf-s");if(s){s.style.display="block";setTimeout(()=>s.style.display="none",3000);}}
+
+/* ══ PRAISE ══ */
+function renderPraise(){
+  (appData.praises||[]).filter(p=>p.to===session.name&&!p.seen).forEach(p=>fbPatch("praises/"+p._key,{seen:true}));
+  const all=appData.praises||[],mine=all.filter(p=>p.to===session.name).slice(0,5),total=all.length;
+  document.getElementById("screen-praise").innerHTML=`
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><div style="font-size:20px">🗓️</div><div><div style="font-size:13px;font-weight:900;color:#f9a8d4">קיר הפירגון היומי</div><div style="font-size:11px;color:var(--muted)">מתאפס כל יום בחצות · ${total} פירגונים היום</div></div></div>
+    <div class="glass" style="padding:18px;margin-bottom:16px;border:1px solid rgba(176,42,106,.4);animation:glowPulse 3s ease-in-out infinite">
+      <div style="font-size:16px;font-weight:900;color:#f9a8d4;margin-bottom:12px">💖 שלחי פירגון לעמית ✨</div>
+      <label class="lbl">למי?</label><input id="pr-to" class="inp" placeholder="שם העמית..."/>
+      <label class="lbl">הודעה</label><textarea id="pr-msg" class="inp" style="resize:none;height:72px" placeholder="כל הכבוד על..."></textarea>
+      <div id="pr-sent" style="display:none;font-size:13px;color:#4ade80;text-align:center;margin-bottom:8px;font-weight:700">✅ הפירגון נשלח! 💖🎉</div>
+      <button class="btn" onclick="sendPraise()" style="width:100%;padding:13px 0;background:linear-gradient(135deg,var(--mag),#8b1a5a);border-radius:14px;color:#fff;font-size:16px;animation:pulseM 2s infinite">שלחי פירגון 💖</button>
+    </div>
+    ${mine.length>0?`<div style="font-size:14px;font-weight:900;color:#f9a8d4;margin-bottom:8px">💌 פירגונים שקיבלת היום</div>${mine.map(p=>`<div class="glass" style="padding:13px 16px;margin-bottom:8px;border:1px solid rgba(176,42,106,.4);background:rgba(176,42,106,.1)"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">מ-${p.from||""} · ${p.ts||""}</div><div style="font-size:14px;font-weight:700;line-height:1.5">"${p.msg||""}"</div></div>`).join("")}`:""}
+    ${all.length>0?`<div style="font-size:13px;font-weight:800;color:var(--muted);margin-bottom:8px;margin-top:4px">📋 כל הפירגונים של היום</div>${all.slice(0,30).map(p=>`<div class="glass" style="padding:11px 14px;margin-bottom:6px;border:1px solid rgba(255,255,255,.08)"><div style="font-size:11px;color:var(--muted);margin-bottom:2px">💖 ${p.from||""} → ${p.to||""} · ${p.ts||""}</div><div style="font-size:13px">${p.msg||""}</div></div>`).join("")}`:`<div style="text-align:center;padding:24px 0;color:var(--dim)">עדיין אין פירגונים היום 💖<br><span style="font-size:12px">היי הראשונה לפרגן!</span></div>`}`;
+}
+function sendPraise(){
+  const to=document.getElementById("pr-to")?.value.trim(),msg=document.getElementById("pr-msg")?.value.trim();if(!to||!msg)return;
+  const now=new Date();
+  fbPush("praises",{from:session.name,to,msg,dateKey:todayStr(),ts:now.toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"}),seen:false});
+  document.getElementById("pr-to").value="";document.getElementById("pr-msg").value="";
+  launchConfetti();
+  const s=document.getElementById("pr-sent");if(s){s.style.display="block";setTimeout(()=>s.style.display="none",4000);}
+}
+
+/* ══ ADMIN ══ */
+let _aTab="board";
+function renderAdmin(){
+  if(!canAdmin()&&!session.isAdmin){document.getElementById("screen-admin").innerHTML=`<div style="text-align:center;padding:40px 0;color:var(--dim)">⛔ אין הרשאה</div>`;return;}
+  const today=new Date().getDay(),tc=today>=0&&today<=4?today:-1;
+  document.getElementById("screen-admin").innerHTML=`<div style="background:rgba(245,158,11,.08);border-bottom:1px solid rgba(245,158,11,.12);padding:10px 0 0;margin:-14px -14px 14px"><div style="display:flex;gap:6px;padding:0 14px 10px;overflow-x:auto">${[{k:"board",l:"📋 לוח תורנויות"},{k:"contacts",l:"📱 אנשי קשר"},{k:"school",l:"🏫 הגדרות"}].map(t=>`<button class="btn" data-atab="${t.k}" onclick="swATab('${t.k}')" style="background:rgba(255,255,255,.08);border-radius:12px;padding:8px 14px;color:#fff;font-size:13px;white-space:nowrap">${t.l}</button>`).join("")}</div></div><div id="admin-content">${renderATab(_aTab,tc)}</div>`;
+  swATab(_aTab);
+}
+function swATab(t){_aTab=t;const today=new Date().getDay(),tc=today>=0&&today<=4?today:-1;document.querySelectorAll("[data-atab]").forEach(b=>{b.style.background=b.dataset.atab===t?"linear-gradient(135deg,#f59e0b,#d97706)":"rgba(255,255,255,.08)";});const c=document.getElementById("admin-content");if(c)c.innerHTML=renderATab(t,tc);}
+function renderATab(t,tc){if(t==="board")return renderAdminBoard(tc);if(t==="contacts"){renderContacts();return document.getElementById("screen-contacts").innerHTML||"";}if(t==="school")return`<div class="glass" style="padding:18px"><div style="font-size:15px;font-weight:900;color:#fbbf24;margin-bottom:14px">🏫 פרטי בית הספר</div><label class="lbl">שם בית הספר</label><input id="as-n" class="inp" value="${appData.settings?.schoolName||""}"/><label class="lbl">סלוגן</label><input id="as-s" class="inp" value="${appData.settings?.slogan||""}"/><button class="btn" onclick="saveSchool()" style="width:100%;padding:12px 0;background:linear-gradient(135deg,#f59e0b,#d97706);border-radius:12px;color:#fff;font-size:14px">שמור ✓</button></div>`;return"";}
+function saveSchool(){fbPatch("settings",{schoolName:document.getElementById("as-n")?.value.trim(),slogan:document.getElementById("as-s")?.value.trim()});toast("✅ נשמר!");}
+function renderAdminBoard(tc){return`<div style="font-size:13px;font-weight:900;color:#fbbf24;margin-bottom:12px">👑 עריכת לוח תורנויות</div><div style="display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;padding-bottom:4px">${SCHEDULE.breaks.map(b=>`<button class="btn" id="abk-${b.id}" onclick="selABk('${b.id}')" style="padding:8px 12px;border-radius:12px;font-size:11px;white-space:nowrap;background:${b.id===(window._abk||"a")?"linear-gradient(135deg,var(--navy),var(--mag))":"rgba(255,255,255,.1)"};color:#fff">${b.label}<br><span style="font-size:9px;opacity:.7">${b.time}</span></button>`).join("")}</div><div id="admin-break-tbl">${renderABkTable(window._abk||"a",tc)}</div>`;}
+window._abk="a";
+function selABk(id){window._abk=id;const tc=new Date().getDay();SCHEDULE.breaks.forEach(b=>{const btn=document.getElementById("abk-"+b.id);if(btn)btn.style.background=b.id===id?"linear-gradient(135deg,var(--navy),var(--mag))":"rgba(255,255,255,.1)";});const tbl=document.getElementById("admin-break-tbl");if(tbl)tbl.innerHTML=renderABkTable(id,tc>=0&&tc<=4?tc:-1);}
+function renderABkTable(bk,tc){return`<div class="duty-table-wrap"><table class="duty-table"><thead><tr><th style="text-align:right;padding-right:8px">עמדה</th>${DAY_NAMES.map((d,i)=>`<th style="${i===tc?"background:#b02a6a":""}">${d}</th>`).join("")}</tr></thead><tbody>${SCHEDULE.stations.map((st,si)=>`<tr><td class="sc">${si+1}. ${st}</td>${[0,1,2,3,4].map(di=>{const v=getCell(bk,si,di);return`<td class="${isMyName(v)?"mc":di===tc?"tc":""}" onclick="adminEditCell('${bk}',${si},${di},'${v.replace(/'/g,"&#39;")}')" style="cursor:pointer">${v||""}</td>`;}).join("")}</tr>`).join("")}</tbody></table></div><div style="font-size:10px;color:var(--dim);text-align:center;margin-top:8px">לחצי על תא לעריכה</div>`;}
+function adminEditCell(bk,si,di,cur){openModal(`<div style="font-size:15px;font-weight:900;margin-bottom:14px;text-align:center">✏️ עריכת תא</div><div style="font-size:12px;color:rgba(255,255,255,.5);margin-bottom:10px;text-align:center">${SCHEDULE.breaks.find(b=>b.id===bk)?.label} · ${SCHEDULE.stations[si]}</div><label class="lbl">שם המורה</label><input id="ac-v" class="inp" value="${cur}" placeholder="שם מורה"/><button class="btn" onclick="saveACell('${bk}',${si},${di})" style="width:100%;padding:12px 0;background:linear-gradient(135deg,#f59e0b,#d97706);border-radius:12px;color:#fff;font-size:15px;margin-bottom:8px">שמור ✓</button><button class="btn" onclick="closeModal()" style="width:100%;padding:10px 0;background:rgba(255,255,255,.08);border-radius:12px;color:rgba(255,255,255,.6);font-size:14px">ביטול</button>`);}
+function saveACell(bk,si,di){const v=document.getElementById("ac-v")?.value||"";fbPatch("dutyOverride",{[`${bk}_${si}_${di}`]:v});closeModal();toast("✅ עודכן!");selABk(window._abk||"a");}
+</script>
+</body>
+</html>
