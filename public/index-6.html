@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0"/>
+<title>חט״ב אורט מדעים ואומנויות נהריה – Staff App</title>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;600;700;800;900&display=swap" rel="stylesheet"/>
+<script>
+const API_BASE = '';
+const APP_TOKEN = '__APP_TOKEN__'; // injected by server at load time – never in source files
+let _sseSource = null;
+const _sseCbs = {};
+function startSSE(paths) {
+  if (_sseSource) _sseSource.close();
+  const url = API_BASE + '/api/stream?token=' + encodeURIComponent(APP_TOKEN) + '&paths=' + paths.map(encodeURIComponent).join(',');
+  _sseSource = new EventSource(url);
+  _sseSource.onmessage = e => {
+    const { path, data } = JSON.parse(e.data);
+    (_sseCbs[path] || []).forEach(cb => cb(data));
+  };
+}
+</script>
+<style>
+:root{--navy:#2c4a96;--mag:#b02a6a;--bg:linear-gradient(145deg,#0d1b4b 0%,#1a2a6e 45%,#2c1654 100%);--card-bg:rgba(255,255,255,.08);--card-border:rgba(255,255,255,.22);--text:#fff;--muted:rgba(255,255,255,.5);--dim:rgba(255,255,255,.3);--topbar:rgba(13,27,75,.95);--nav:rgba(13,27,75,.97);--inp-bg:rgba(255,255,255,.1);--inp-border:rgba(255,255,255,.2);--inp-color:#fff;}
+body.light{--bg:linear-gradient(145deg,#dce8ff 0%,#eef3ff 45%,#f3e8ff 100%);--card-bg:rgba(255,255,255,.75);--card-border:rgba(100,120,200,.3);--text:#1a1a2e;--muted:rgba(30,30,80,.55);--dim:rgba(30,30,80,.35);--topbar:rgba(220,232,255,.96);--nav:rgba(220,232,255,.98);--inp-bg:rgba(255,255,255,.7);--inp-border:rgba(44,74,150,.25);--inp-color:#1a1a2e;}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0;}
+body{font-family:'Assistant',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;max-width:480px;margin:0 auto;direction:rtl;transition:background .35s;}
+input,textarea,select{font-family:'Assistant',sans-serif;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulseM{0%,100%{box-shadow:0 0 0 0 rgba(176,42,106,.5)}70%{box-shadow:0 0 0 14px rgba(176,42,106,0)}}
+@keyframes popIn{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
+@keyframes floatY{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-8px) scale(1.05)}}
+@keyframes sparkle{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.6)}}
+@keyframes heartPop{0%{transform:scale(1)}50%{transform:scale(1.35)}100%{transform:scale(1)}}
+@keyframes glowPulse{0%,100%{box-shadow:0 0 10px rgba(176,42,106,.4)}50%{box-shadow:0 0 28px rgba(176,42,106,.9),0 0 50px rgba(176,42,106,.4)}}
+@keyframes mineCell{0%,100%{box-shadow:0 0 0 0 rgba(176,42,106,.7)}50%{box-shadow:0 0 0 5px rgba(176,42,106,0)}}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.glass{background:var(--card-bg);backdrop-filter:blur(25px);-webkit-backdrop-filter:blur(25px);border:1px solid var(--card-border);border-radius:20px;box-shadow:0 8px 32px rgba(44,74,150,.15);}
+.btn{font-family:'Assistant',sans-serif;cursor:pointer;border:none;transition:transform .1s;font-weight:800;}
+.btn:active{transform:scale(.94);}
+.card-btn{border-radius:22px;padding:20px 14px;text-align:center;color:#fff;border:none;cursor:pointer;transition:transform .15s;position:relative;overflow:hidden;}
+.card-btn:active{transform:scale(.94);}
+.card-btn .icon{font-size:34px;margin-bottom:6px;display:block;}
+.card-btn .title{font-size:16px;font-weight:900;}
+.card-btn .sub{font-size:10px;opacity:.75;margin-top:3px;display:block;}
+.card-btn.af .icon{animation:floatY 2.8s ease-in-out infinite;}
+.card-btn.ap .icon{animation:heartPop 1.2s ease-in-out infinite;}
+.card-btn.ap{animation:glowPulse 2s ease-in-out infinite;}
+.card-btn.ap::before,.card-btn.ap::after{content:"✨";position:absolute;font-size:14px;animation:sparkle 1.4s ease-in-out infinite;}
+.card-btn.ap::before{top:8px;right:10px;animation-delay:.2s;}
+.card-btn.ap::after{bottom:8px;left:10px;animation-delay:.7s;}
+#confetti-canvas{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;display:none;}
+.duty-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.duty-table{width:100%;border-collapse:separate;border-spacing:2px;background:#fff;border-radius:14px;overflow:hidden;}
+.duty-table th{background:#2c4a96;color:#fff;font-size:11px;padding:6px 4px;text-align:center;font-weight:800;}
+.duty-table td{background:#f8f9ff;color:#1a1a2e;font-size:11px;padding:6px 5px;text-align:center;font-weight:600;border:1px solid #e2e8f0;min-width:58px;}
+.duty-table td.sc{background:#eef2ff;color:#2c4a96;font-weight:700;text-align:right;padding-right:8px;min-width:120px;}
+.duty-table td.tc{background:#fce7f3;color:#9d174d;font-weight:800;}
+.duty-table td.mc{background:#b02a6a;color:#fff!important;font-weight:900;border-radius:6px;animation:mineCell 2s ease-in-out infinite;}
+.duty-table tr:hover td{background:#f0f4ff;}
+.pc{background:#fff;color:#1a1a2e;border-radius:16px;padding:14px 16px;margin-bottom:10px;box-shadow:0 4px 16px rgba(44,74,150,.15);border:1px solid #e2e8f0;}
+.pc .dl{font-size:11px;font-weight:700;color:var(--navy);margin-bottom:3px;}
+.pc .ll{font-size:16px;font-weight:800;color:#1a1a2e;}
+.pc.today{border:2px solid var(--mag);}
+.inp{width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--inp-border);background:var(--inp-bg);color:var(--inp-color);font-size:15px;outline:none;margin-bottom:10px;}
+.inp-sm{width:100%;padding:8px 10px;font-size:13px;border-radius:10px;border:1px solid var(--inp-border);background:var(--inp-bg);color:var(--inp-color);outline:none;margin-bottom:8px;}
+.lbl{font-size:12px;color:var(--muted);margin-bottom:4px;font-weight:700;display:block;}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.badge{font-size:11px;border-radius:20px;padding:2px 9px;font-weight:800;display:inline-block;}
+.sn{background:rgba(107,114,128,.25);border:1px solid #6b728088;color:#9ca3af;}
+.sb{background:rgba(44,74,150,.3);border:1px solid var(--navy);color:#93c5fd;}
+.sd{background:rgba(16,185,129,.2);border:1px solid #10b98188;color:#4ade80;}
+#topbar{position:sticky;top:0;z-index:100;background:var(--topbar);backdrop-filter:blur(20px);border-bottom:1px solid var(--card-border);padding:8px 14px;display:flex;align-items:center;gap:8px;}
+#bottomnav{position:fixed;bottom:0;right:0;left:0;max-width:480px;margin:0 auto;background:var(--nav);backdrop-filter:blur(20px);border-top:1px solid var(--card-border);display:flex;z-index:99;}
+.nb{flex:1;padding:10px 0;background:none;border:none;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:2px;font-size:18px;cursor:pointer;font-family:'Assistant',sans-serif;border-top:2px solid transparent;transition:color .2s,border-color .2s;}
+.nb.active{color:#a5b4fc;border-top-color:var(--mag);}
+.nb .n2{font-size:10px;font-weight:700;}
+#app{padding-bottom:80px;}
+.screen{display:none;padding:14px 14px 0;animation:fadeUp .25s ease;}
+.screen.active{display:block;}
+#modal-overlay{position:fixed;inset:0;z-index:999;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;padding:16px;}
+#modal-overlay.open{display:flex;}
+#modal-box{background:linear-gradient(145deg,#1a2a6e,#2c1654);border:1px solid rgba(255,255,255,.2);border-radius:22px;padding:24px;width:100%;max-width:400px;animation:popIn .2s ease;max-height:90vh;overflow-y:auto;}
+#toast{position:fixed;top:80px;left:16px;right:16px;z-index:998;max-width:448px;margin:0 auto;background:linear-gradient(135deg,#10b981,#059669);border-radius:14px;padding:14px 18px;font-size:14px;font-weight:700;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.4);display:none;animation:fadeUp .3s ease;}
+#login-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;background:var(--bg);}
+.skel{border-radius:12px;background:linear-gradient(90deg,rgba(255,255,255,.06) 25%,rgba(255,255,255,.14) 50%,rgba(255,255,255,.06) 75%);background-size:200% 100%;animation:shimmer 1.6s infinite;margin-bottom:12px;}
+.dev-credit{background:linear-gradient(135deg,var(--navy),var(--mag));border-radius:12px;padding:8px 16px;text-align:center;font-size:13px;font-weight:800;color:#fff;letter-spacing:.3px;margin-bottom:14px;box-shadow:0 4px 14px rgba(176,42,106,.4);}
+.search-wrap{position:relative;margin-bottom:12px;}
+.search-wrap input{width:100%;padding:11px 40px 11px 14px;border-radius:14px;border:1px solid var(--inp-border);background:var(--inp-bg);color:var(--inp-color);font-size:14px;outline:none;font-family:'Assistant',sans-serif;}
+.search-wrap .si{position:absolute;right:13px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none;}
+</style>
+</head>
+<body>
+<canvas id="confetti-canvas"></canvas>
+<div id="toast"></div>
+<div id="modal-overlay"><div id="modal-box"></div></div>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div style="width:100%;max-width:400px;animation:fadeUp .5s ease">
+    <div class="dev-credit">💻 פיתוח אפליקציה – לטם מחוליה</div>
+
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="width:220px;height:130px;background:#fff;border-radius:20px;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;padding:12px;box-shadow:0 16px 48px rgba(0,0,0,.5)">
+        <img src="data:image/jpeg;base64,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"
+             style="max-width:100%;max-height:100%;object-fit:contain"/>
+      </div>
+      <h1 style="font-size:17px;font-weight:900;margin:0 0 4px;line-height:1.3">חט״ב אורט מדעים ואומנויות נהריה</h1>
+      <div style="font-size:13px;color:#818cf8">אנחנו רואים אותך 💙</div>
+    </div>
+
+    <div class="glass" style="padding:24px">
+      <div id="ls-init">
+        <div style="font-size:17px;font-weight:900;margin-bottom:16px;text-align:center">👋 כניסה למערכת</div>
+        <label class="lbl">📧 מייל ארגוני</label>
+        <input id="li-email" class="inp" placeholder="שם@..." type="email" style="direction:ltr;text-align:right" onkeydown="if(event.key==='Enter')loginInit()"/>
+        <label class="lbl">👤 שם מלא</label>
+        <input id="li-name" class="inp" placeholder="ישראל ישראלי" type="text" onkeydown="if(event.key==='Enter')loginInit()"/>
+        <label class="lbl">🔐 קוד גישה</label>
+        <div style="position:relative;margin-bottom:12px">
+          <input id="li-pass" class="inp" placeholder="••••" type="password" style="margin-bottom:0;padding-left:44px;direction:ltr;text-align:center;letter-spacing:4px" onkeydown="if(event.key==='Enter')loginInit()"/>
+          <button onclick="togglePass('li-pass',this)" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:rgba(255,255,255,.5)">👁</button>
+        </div>
+        <!-- Terms checkbox -->
+        <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:12px;margin-bottom:12px">
+          <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer">
+            <input type="checkbox" id="terms-cb" style="width:18px;height:18px;margin-top:2px;accent-color:var(--mag);cursor:pointer;flex-shrink:0"/>
+            <span style="font-size:12px;color:rgba(255,255,255,.8);line-height:1.5">
+              אני מאשר/ת את <button onclick="openTermsModal(event)" style="background:none;border:none;color:#a5b4fc;font-size:12px;cursor:pointer;font-weight:800;font-family:'Assistant',sans-serif;text-decoration:underline;padding:0">תנאי השימוש</button>
+              ומסכים/ה לקבל עדכונים ודיוור מהאפליקציה
+            </span>
+          </label>
+        </div>
+        <div id="li-err" style="display:none;background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);border-radius:10px;padding:10px;font-size:13px;color:#fca5a5;margin-bottom:12px;text-align:center"></div>
+        <button class="btn" onclick="loginInit()" style="width:100%;padding:14px 0;border-radius:14px;background:linear-gradient(135deg,var(--navy),var(--mag));color:#fff;font-size:16px">המשך →</button>
+      </div>
+
+      <div id="ls-setpass" style="display:none">
+        <div id="li-greet" style="font-size:16px;font-weight:900;margin-bottom:4px;text-align:center"></div>
+        <div style="font-size:13px;color:rgba(255,255,255,.5);text-align:center;margin-bottom:16px">בפעם הראשונה – צרי סיסמה אישית</div>
+        <label class="lbl">🔑 סיסמה (לפחות 4 תווים)</label>
+        <input id="li-np" class="inp" type="password" placeholder="בחרי סיסמה"/>
+        <label class="lbl">🔑 אמתי</label>
+        <input id="li-np2" class="inp" type="password" placeholder="הקלידי שוב"/>
+        <div id="li-err2" style="display:none;background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);border-radius:10px;padding:10px;font-size:13px;color:#fca5a5;margin-bottom:12px;text-align:center"></div>
+        <button class="btn" onclick="loginSetPass()" style="width:100%;padding:14px 0;border-radius:14px;background:linear-gradient(135deg,var(--mag),#8b1a5a);color:#fff;font-size:16px;margin-bottom:8px">שמור וכנס ✓</button>
+        <button class="btn" onclick="showLS('init')" style="width:100%;padding:10px 0;border-radius:12px;background:rgba(255,255,255,.08);color:rgba(255,255,255,.6);font-size:14px">← חזור</button>
+      </div>
+
+      <div id="ls-ret" style="display:none">
+        <div id="li-greet2" style="font-size:16px;font-weight:900;margin-bottom:4px;text-align:center"></div>
+        <div style="font-size:13px;color:rgba(255,255,255,.5);text-align:center;margin-bottom:16px">הזיני את הסיסמה האישית שלך</div>
+        <label class="lbl">🔑 סיסמה אישית</label>
+        <div style="position:relative;margin-bottom:10px">
+          <input id="li-rp" class="inp" type="password" placeholder="••••" style="margin-bottom:0;padding-left:44px;direction:ltr;text-align:center;letter-spacing:4px" onkeydown="if(event.key==='Enter')loginReturn()"/>
+          <button onclick="togglePass('li-rp',this)" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:rgba(255,255,255,.5)">👁</button>
+        </div>
+        <div id="li-err3" style="display:none;background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);border-radius:10px;padding:10px;font-size:13px;color:#fca5a5;margin-bottom:12px;text-align:center"></div>
+        <button class="btn" onclick="loginReturn()" style="width:100%;padding:14px 0;border-radius:14px;background:linear-gradient(135deg,var(--navy),var(--mag));color:#fff;font-size:16px;margin-bottom:8px">כניסה →</button>
+        <button class="btn" onclick="showLS('init')" style="width:100%;padding:10px 0;border-radius:12px;background:rgba(255,255,255,.08);color:rgba(255,255,255,.6);font-size:14px">← חזור</button>
+      </div>
+      <div style="text-align:center;font-size:11px;color:rgba(255,255,255,.22);margin-top:14px">גישה מורשית לצוות בית הספר בלבד</div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="main-app" style="display:none">
+  <div id="topbar">
+    <button id="back-btn" class="btn" onclick="goBack()" style="background:rgba(255,255,255,.12);border-radius:10px;width:36px;height:36px;display:none;align-items:center;justify-content:center;color:#fff;font-size:20px">›</button>
+    <div style="height:36px;width:60px;background:#fff;border-radius:8px;overflow:hidden;display:flex;align-items:center;justify-content:center;padding:4px;flex-shrink:0;box-shadow:0 2px 10px rgba(0,0,0,.3)">
+      <img src="data:image/jpeg;base64,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"
+           style="max-width:100%;max-height:100%;object-fit:contain"/>
+    </div>
+    <div style="flex:1;min-width:0">
+      <div id="topbar-title" style="font-size:13px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">חט״ב אורט מדעים</div>
+      <div id="topbar-sub" style="font-size:10px;color:#818cf8">אנחנו רואים אותך 💙</div>
+    </div>
+    <button id="theme-btn" class="btn" onclick="toggleTheme()" style="background:rgba(255,255,255,.1);border-radius:10px;padding:6px 9px;color:var(--text);font-size:15px">🌙</button>
+    <button id="share-btn" class="btn" onclick="shareApp()" style="background:rgba(255,255,255,.1);border-radius:10px;padding:6px 9px;color:var(--text);font-size:15px">🔗</button>
+    <button id="logout-btn" class="btn" onclick="logout()" style="background:rgba(255,255,255,.1);border-radius:10px;padding:6px 10px;color:rgba(255,255,255,.7);font-size:12px">יציאה</button>
+  </div>
+  <div id="app">
+    <div id="screen-dash" class="screen active"></div>
+    <div id="screen-duty" class="screen"></div>
+    <div id="screen-faults" class="screen"></div>
+    <div id="screen-contacts" class="screen"></div>
+    <div id="screen-tech" class="screen"></div>
+    <div id="screen-board" class="screen"></div>
+    <div id="screen-praise" class="screen"></div>
+    <div id="screen-admin" class="screen"></div>
+    <div id="screen-guard" class="screen"></div>
+  </div>
+  <nav id="bottomnav">
+    <button class="nb active" data-s="dash"   onclick="navTo('dash')">🏠<span class="n2">בית</span></button>
+    <button class="nb" data-s="duty"          onclick="navTo('duty')">📋<span class="n2">תורנות</span></button>
+    <button class="nb" data-s="faults"        onclick="navTo('faults')">🔧<span class="n2">תחזוקה</span></button>
+    <button class="nb" data-s="board"         onclick="navTo('board')">📊<span class="n2">לוח חי</span></button>
+    <button class="nb" data-s="praise"        onclick="navTo('praise')">💖<span class="n2">פירגון</span></button>
+    <button class="nb" id="admin-nav-btn" data-s="admin" onclick="navTo('admin')" style="display:none">⚙️<span class="n2">ניהול</span></button>
+  </nav>
+</div>
+
+<script>
+/* ── Constants ── */
+const ORG_DOMAIN="madaimna.ort.org.il";
+const ADMIN_CODE="Ortna1";
+const ADMIN_USERS=["מירי קנריק","לטם מחוליה","עינת לזר","מאיה קדם","סיון אהרון"];
+const ORI_PHONE="0549933346",KOSTIA_PHONE="0535279015",GUARD_PHONE="0547882537";
+const DAY_NAMES=["ראשון","שני","שלישי","רביעי","חמישי"];
+const SCHOOL_NAME="חט״ב אורט מדעים ואומנויות נהריה";
+
+/* ── Schedule ── */
+/* לוח תורנויות תשפ"ז */
+const SCHEDULE={
+  breaks:[{id:"a",label:"הפסקה א׳",time:"09:45–10:05"},{id:"b",label:"הפסקה ב׳",time:"11:50–12:05"},{id:"c",label:"הפסקה ג׳",time:"13:35–13:50"},{id:"d",label:"הפסקה ד׳",time:"15:20–15:25"}],
+  stations:["קומה א׳ צפון + מבואה", "קומה א׳ דרום + דרום מערב", "קומה ב׳ צפון", "קומה ב׳ מערב", "קומה ב׳ דרום", "חצר פנימית + כביש גישה לאשכול", "חצר מערבית", "מגרש משחקים"],
+  a:[["טובול איילת-השחר", "גליק לבנת", "בן אבו ממן הילה", "אסולין שמרית", "פוליטי עדיאל"], ["טובי דנה", "ויינברג הילה", "טפירו מור", "נוח איפרגן מירה", "אטיאס שירלי"], ["משען שניר", "חיים חמדה", "ביסאן סדיקה", "סייג זוהר שלומית", "לוי חנה"], ["דנובסקי לינה", "שחר דיין", "בן ישראל הילה", "אדרעי רבקה", "בן-חמו לימור"], ["רוזנר שרון", "כהן גליה", "לסקר שקד", "צרבינקה נטישנסקי דיאנה", "פופקוב יוליה"], ["ינאי אורית", "נאסומא נטלי", "דנה שירלי", "קופל אדית", "ברקו חגית"], ["אהרון סיוון", "חדד תמיר", "חדד תמיר", "רונן שיר", "ג'קוב שרונה"], ["אלעלם איבתיסאם", "מעוז ענבר", "וקנין אורנה", "קקון אתי", "בר און קרייף קארין"]],
+  b:[["קקון אתי", "אסדי נירמין", "אדרעי רבקה", "דנה שירלי", "אבו יוסף נבואני יארה"], ["סייג זוהר שלומית", "בראון קארין", "צרבינקה נטישנסקי דיאנה", "ינאי אורית", "אהרון סיוון"], ["בן-חמו לימור", "בן ישראל הילה", "גליק לבנת", "משרקי זהבה", "אלעלם איבתיסאם"], ["לסקר שקד", "יופה מרינה", "ויינברג הילה", "סביר רווית", "דנובסקי לינה"], ["אטיאס שירלי", "כהן סימה", "לוי חנה", "סיטבון זיו", "ביסאן סדיקה"], ["גלט טל", "יגר הילה", "יופה מרינה", "עברי אור אל שירה", "דיין שחר"], ["ג'קוב שרונה", "טפירו מור", "טובי דנה", "טובול איילת-השחר", "שאמי רזאן"], ["חיים חמדה", "טל אור", "שוורצוולד לירן", "פוליטי עדיאל", "מעוז ענבר"]],
+  c:[["", "ברקו חגית", "אסולין שמרית", "בניזרי ירדן", "ג'קוב שרונה"], ["", "גרדוש שרית", "עברי אור אל שירה", "סביר רווית", "סיטבון זיו"], ["", "יהוד עדי", "משרקי זהבה", "מחוליה לטם", "בניזרי ירדן"], ["", "כהן סימה", "קופל אדית", "שאמי רזאן", "פופקוב יוליה"], ["", "נאסומא נטלי", "רוזנר שרון", "רונן שיר", "דיין שחר"], ["", "רונן שיר", "אבו יוסף נבואני יארה", "כהן גליה", "ויינברג הילה"], ["", "אסדי נירמין", "מעוז ענבר", "יגר הילה", "מחוליה לטם"], ["", "משען שניר", "נוח איפרגן מירה", "גרדוש שרית", "אהרון סיוון"]],
+  d:[["", "בר און קרייף קארין", "ברקו חגית", "אלעלם איבתיסאם", ""], ["", "טובול איילת-השחר", "כהן סימה", "בן ישראל הילה", ""], ["", "סביר רווית", "משרקי זהבה", "בניזרי ירדן", ""], ["", "סיטבון זיו", "קופל אדית", "", ""], ["", "בן-חמו לימור", "רוזנר שרון", "מחוליה לטם", ""], ["", "אסדי נירמין", "אסולין שמרית", "נוח איפרגן מירה", ""], ["", "טפירו מור", "ביסאן סדיקה", "שאמי רזאן", ""], ["", "", "אלעלם איבתיסאם", "גרדוש שרית", ""]],
+};
+
+/* ── State ── */
+let session=null,appData={},fbSubs=[],curScreen="dash",screenStack=[],_dataLoaded=false;
+
+/* ── Theme ── */
+(function(){applyTheme(localStorage.getItem("ort_theme")||"dark");})();
+function applyTheme(m){document.body.classList.toggle("light",m==="light");const b=document.getElementById("theme-btn");if(b)b.textContent=m==="light"?"🌙":"☀️";}
+function toggleTheme(){const n=document.body.classList.contains("light")?"dark":"light";localStorage.setItem("ort_theme",n);applyTheme(n);}
+
+/* ── Terms Modal ── */
+function openTermsModal(e){
+  if(e)e.preventDefault();
+  openModal(`
+    <div style="font-size:17px;font-weight:900;margin-bottom:16px;text-align:center;color:#a5b4fc">📋 תנאי שימוש ודיוור</div>
+    <div style="font-size:13px;line-height:1.8;color:rgba(255,255,255,.85)">
+      <div style="font-size:14px;font-weight:800;color:#fbbf24;margin-bottom:6px">1. שימוש מורשה בלבד</div>
+      <p style="margin-bottom:12px">האפליקציה מיועדת לשימוש צוות חט״ב אורט מדעים ואומנויות נהריה בלבד. כל שימוש על ידי גורם שאינו חלק מהצוות מהווה הפרה של תנאי השימוש.</p>
+      <div style="font-size:14px;font-weight:800;color:#fbbf24;margin-bottom:6px">2. כניסה עם מייל ארגוני</div>
+      <p style="margin-bottom:12px">הכניסה למערכת מותרת בעלי מייל ארגוני של בית הספר בלבד. חל איסור מוחלט על שיתוף פרטי גישה עם גורמים חיצוניים.</p>
+      <div style="font-size:14px;font-weight:800;color:#fbbf24;margin-bottom:6px">3. מדיניות פרטיות</div>
+      <p style="margin-bottom:12px">המערכת שומרת מידע בסיסי הנדרש לתפעולה. המידע מאוחסן בשרתי Firebase של Google ומוגן בהתאם לתקני האבטחה של Google. לא יועבר מידע אישי לצדדים שלישיים.</p>
+      <div style="font-size:14px;font-weight:800;color:#fbbf24;margin-bottom:6px">4. הסכמה לדיוור ועדכונים</div>
+      <p style="margin-bottom:12px">בהצטרפות למערכת, המשתמש מסכים לקבל עדכונים ומידע רלוונטי הקשור לתפקודו בבית הספר.</p>
+      <div style="background:rgba(176,42,106,.2);border:1px solid rgba(176,42,106,.4);border-radius:10px;padding:10px;font-size:12px;color:#f9a8d4;text-align:center">
+        💻 פותח על ידי לטם מחוליה · חט״ב אורט מדעים ואומנויות נהריה
+      </div>
+    </div>
+    <button class="btn" onclick="closeModal()" style="width:100%;padding:12px 0;background:linear-gradient(135deg,var(--navy),var(--mag));border-radius:12px;color:#fff;font-size:15px;margin-top:16px">הבנתי ✓</button>
+  `);
+}
+
+/* ── API helpers (Firebase credentials live on the server only) ── */
+function fbListen(path,cb){if(!_sseCbs[path])_sseCbs[path]=[];_sseCbs[path].push(cb);fbSubs.push(()=>{if(_sseCbs[path])_sseCbs[path]=_sseCbs[path].filter(c=>c!==cb);});}
+async function fbWrite(p,v){await fetch(API_BASE+'/api/write',{method:'POST',headers:{'Content-Type':'application/json','x-app-token':APP_TOKEN},body:JSON.stringify({path:p,value:v})});}
+async function fbPush(p,v){const r=await fetch(API_BASE+'/api/push',{method:'POST',headers:{'Content-Type':'application/json','x-app-token':APP_TOKEN},body:JSON.stringify({path:p,value:v})});return r.json();}
+async function fbDel(p){await fetch(API_BASE+'/api/data?path='+encodeURIComponent(p),{method:'DELETE',headers:{'x-app-token':APP_TOKEN}});}
+async function fbPatch(p,v){await fetch(API_BASE+'/api/patch',{method:'POST',headers:{'Content-Type':'application/json','x-app-token':APP_TOKEN},body:JSON.stringify({path:p,value:v})});}
+function lsGet(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch{return d;}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
+
+/* ── Toast ── */
+function shareApp(){const url=location.origin+"/",title="אפליקציית הצוות – אורט נהריה";if(navigator.share){navigator.share({title,text:title,url}).catch(()=>{});return;}const done=()=>toast("✅ הקישור הועתק – אפשר להדביק ולשלוח");if(navigator.clipboard)navigator.clipboard.writeText(url).then(done).catch(()=>prompt("העתיקו את הקישור:",url));else prompt("העתיקו את הקישור:",url);}
+function toast(msg,dur=3500){const el=document.getElementById("toast");el.textContent=msg;el.style.display="block";clearTimeout(el._t);el._t=setTimeout(()=>el.style.display="none",dur);}
+
+/* ── Modal ── */
+function openModal(html){document.getElementById("modal-box").innerHTML=html;document.getElementById("modal-overlay").classList.add("open");}
+function closeModal(){document.getElementById("modal-overlay").classList.remove("open");}
+document.getElementById("modal-overlay").addEventListener("click",e=>{if(e.target===document.getElementById("modal-overlay"))closeModal();});
+
+/* ── Confetti ── */
+function launchConfetti(){
+  const canvas=document.getElementById("confetti-canvas");canvas.style.display="block";
+  const ctx=canvas.getContext("2d");canvas.width=window.innerWidth;canvas.height=window.innerHeight;
+  const pieces=[],colors=["#f59e0b","#b02a6a","#6366f1","#10b981","#f97316","#06b6d4","#ec4899","#84cc16"];
+  for(let i=0;i<120;i++)pieces.push({x:Math.random()*canvas.width,y:-20,r:Math.random()*8+4,color:colors[~~(Math.random()*colors.length)],vx:(Math.random()-.5)*4,vy:Math.random()*4+2,rot:Math.random()*360,vr:(Math.random()-.5)*8,shape:Math.random()>.5?"rect":"circle"});
+  let frame=0;
+  (function draw(){ctx.clearRect(0,0,canvas.width,canvas.height);pieces.forEach(p=>{ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.rot*Math.PI/180);ctx.fillStyle=p.color;ctx.globalAlpha=.85;p.shape==="rect"?ctx.fillRect(-p.r,-p.r/2,p.r*2,p.r):(ctx.beginPath(),ctx.arc(0,0,p.r,0,Math.PI*2),ctx.fill());ctx.restore();p.x+=p.vx;p.y+=p.vy;p.rot+=p.vr;p.vy+=.05;});if(++frame<180)requestAnimationFrame(draw);else{ctx.clearRect(0,0,canvas.width,canvas.height);canvas.style.display="none";}})();
+}
+
+/* ── Helpers ── */
+function todayStr(){return new Date().toLocaleDateString("sv-SE",{timeZone:"Asia/Jerusalem"});}
+function getCell(bk,si,di){const k=`${bk}_${si}_${di}`;return appData.dutyOverride&&appData.dutyOverride[k]!==undefined?appData.dutyOverride[k]:(SCHEDULE[bk]?.[si]?.[di]??"");}
+function isMyName(name){if(!name||!session)return false;const n=name.trim().toLowerCase();return session.name.trim().split(/\s+/).filter(p=>p.length>1).some(p=>n.includes(p.toLowerCase()));}
+function canAdmin(){return session&&(session.isAdmin||ADMIN_USERS.some(a=>session.name.includes(a.split(" ")[0])));}
+
+/* ── App kill switch ── */
+const KILL_HASH="e851d7cf2dd4a7059f3e9eb09891acd148bad32d93c3227bf6e9c7b65221df27";
+const REVIVE_HASH="a3f8c1d2e7b4096f5a2c8e3d1f7b0a4c6e9d2f5b8a1c4e7f0b3d6a9c2e5f8b1";
+async function hashStr(s){const buf=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(s));return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");}
+async function checkKill(pass){const h=await hashStr(pass);return h===KILL_HASH;}
+function showKilled(){document.getElementById("login-screen").innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:20px;text-align:center"><div style="font-size:48px;margin-bottom:16px">🔒</div><div style="font-size:18px;font-weight:900;color:#fff;margin-bottom:8px">האפליקציה אינה זמינה כרגע</div><div style="font-size:13px;color:rgba(255,255,255,.5)">נסה שוב מאוחר יותר</div><div style="margin-top:32px"><input id="revive-inp" type="password" placeholder="••••" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:12px 16px;color:#fff;font-size:16px;text-align:center;letter-spacing:4px;outline:none;font-family:Assistant,sans-serif" onkeydown="if(event.key==='Enter')tryRevive()"/></div></div>`;}
+async function tryRevive(){const v=document.getElementById("revive-inp")?.value;if(!v)return;if(await checkKill(v)){lsSet("ort_killed",false);location.reload();}}
+
+/* ── Email validation (domain kept secret) ── */
+function isOrgEmail(email){return email.toLowerCase().trim().endsWith("@"+ORG_DOMAIN);}
+function extractNameFromEmail(email){return email.split("@")[0];}
+
+/* ── Skeleton ── */
+function showSkeleton(sid){
+  const el=document.getElementById("screen-"+sid);if(!el)return;
+  el.innerHTML=`<div style="padding:14px"><div class="skel" style="height:22px;width:55%;margin-bottom:18px"></div><div class="skel" style="height:90px;border-radius:18px"></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px"><div class="skel" style="height:90px;border-radius:18px"></div><div class="skel" style="height:90px;border-radius:18px"></div><div class="skel" style="height:90px;border-radius:18px"></div><div class="skel" style="height:90px;border-radius:18px"></div></div><div class="skel" style="height:16px"></div><div class="skel" style="height:12px;width:70%"></div></div>`;
+}
+
+/* ── Navigation ── */
+const TITLES={dash:"ראשי",duty:"📋 תורנויות",faults:"🔧 תחזוקה",contacts:"📱 אנשי קשר",tech:"📡 מידע טכני",board:"📊 לוח משותף",praise:"💖 פירגון",guard:"🛡️ פנייה לשומר",admin:"👑 ניהול"};
+function showScreen(s){
+  document.querySelectorAll(".screen").forEach(el=>el.classList.remove("active"));
+  const el=document.getElementById("screen-"+s);if(el)el.classList.add("active");
+  curScreen=s;const isDash=s==="dash";
+  document.getElementById("back-btn").style.display=isDash?"none":"flex";
+  document.getElementById("logout-btn").style.display=isDash?"block":"none";
+  document.getElementById("topbar-sub").style.display=isDash?"block":"none";
+  document.getElementById("topbar-title").textContent=isDash?(appData.settings?.schoolName||"חט״ב אורט מדעים"):TITLES[s]||"";
+  document.querySelectorAll(".nb").forEach(b=>b.classList.toggle("active",b.dataset.s===s));
+  if(!_dataLoaded){showSkeleton(s);return;}
+  renderScreen(s);
+}
+function navTo(s){if(s!==curScreen)screenStack.push(curScreen);showScreen(s);}
+function goBack(){showScreen(screenStack.pop()||"dash");}
+function renderScreen(s){const m={dash:renderDash,duty:renderDuty,faults:renderFaults,contacts:renderContacts,tech:renderTech,board:renderBoard,praise:renderPraise,admin:renderAdmin,guard:renderGuard};if(m[s])m[s]();}
+
+/* ── Sync ── */
+function startSync(){
+  showSkeleton("dash");
+  let sL=false,cL=false,fL=false;
+  function check(){if(sL&&cL&&fL&&!_dataLoaded){_dataLoaded=true;renderScreen(curScreen);}}
+  const personalPath="personalDuties/"+session.name.replace(/\s+/g,"_");
+  fbListen("settings",d=>{appData.settings=d||{schoolName:SCHOOL_NAME,slogan:"אנחנו רואים אותך 💙"};const sub=document.getElementById("topbar-sub");if(sub)sub.textContent=appData.settings.slogan;sL=true;check();if(_dataLoaded&&curScreen==="dash")renderDash();});
+  fbListen("contacts",d=>{appData.contacts=d?Object.entries(d).map(([k,v])=>({...v,_key:k})):[];cL=true;check();if(_dataLoaded&&curScreen==="contacts")renderContacts();});
+  fbListen("faults",d=>{appData.faults=d?Object.entries(d).map(([k,v])=>({...v,_key:k})):[];fL=true;check();if(_dataLoaded&&(curScreen==="faults"||curScreen==="dash"))renderScreen(curScreen);});
+  fbListen("sharedBoard",d=>{appData.sharedBoard=d?Object.entries(d).map(([k,v])=>({...v,_key:k})):[];if(_dataLoaded&&curScreen==="board")renderBoard();});
+  fbListen("praises",d=>{
+    const today=todayStr();const all=d?Object.entries(d).map(([k,v])=>({...v,_key:k})):[];
+    all.forEach(p=>{if(p.dateKey&&p.dateKey!==today)fbDel("praises/"+p._key);});
+    appData.praises=all.filter(p=>!p.dateKey||p.dateKey===today);
+    if(_dataLoaded&&curScreen==="praise")renderPraise();if(_dataLoaded&&curScreen==="dash")renderDash();
+  });
+  fbListen("dutyOverride2",d=>{appData.dutyOverride=d||{};if(_dataLoaded&&(curScreen==="duty"||curScreen==="admin"))renderScreen(curScreen);});
+  fbListen("dutyNotes",d=>{appData.dutyNotes=d||{};if(_dataLoaded&&curScreen==="duty")renderDuty();});
+  fbListen("techInfo",d=>{appData.techInfo=d||{wifi:[{name:"MadeM-TeacheR",password:"MadeM-2022"}],copier:[],gates:[]};if(_dataLoaded&&curScreen==="tech")renderTech();});
+  fbListen(personalPath,d=>{appData.myPersonalDuties=d?Object.entries(d).map(([k,v])=>({...v,_key:k})):[];if(_dataLoaded&&curScreen==="duty")renderDuty();});
+  startSSE(["settings","contacts","faults","sharedBoard","praises","dutyOverride2","dutyNotes","techInfo",personalPath]);
+}
+
+/* ══ LOGIN ══ */
+function showLS(step){["init","setpass","ret"].forEach(s=>{const el=document.getElementById("ls-"+s);if(el)el.style.display=s===step?"block":"none";});}
+function togglePass(id,btn){const el=document.getElementById(id);el.type=el.type==="password"?"text":"password";btn.textContent=el.type==="password"?"👁":"🙈";}
+let _lname="",_lemail="";
+
+async function loginInit(){
+  const cb=document.getElementById("terms-cb");
+  if(cb&&!cb.checked)return showErr("li-err","יש לאשר את תנאי השימוש כדי להמשיך");
+
+  /* Kill/Revive toggle – same code */
+  const passVal=document.getElementById("li-pass").value;
+  if(passVal&&await checkKill(passVal)){
+    const killed=lsGet("ort_killed",false);
+    if(killed){lsSet("ort_killed",false);location.reload();}
+    else{lsSet("ort_killed",true);showKilled();}
+    return;
+  }
+
+  const email=document.getElementById("li-email").value.trim();
+  const fullName=document.getElementById("li-name").value.trim();
+  const pass=document.getElementById("li-pass").value;
+  document.getElementById("li-err").style.display="none";
+
+  if(!email)return showErr("li-err","נא להזין כתובת מייל ארגונית");
+  if(!email.includes("@"))return showErr("li-err","כתובת המייל אינה תקינה");
+  if(!isOrgEmail(email))return showErr("li-err","הכניסה מותרת עם מייל ארגוני בלבד");
+  if(!fullName)return showErr("li-err","נא להזין שם מלא");
+
+  _lemail=email;
+  _lname=fullName;
+
+  /* Admin code */
+  if(pass===ADMIN_CODE){
+    const isAdm=ADMIN_USERS.some(a=>fullName.includes(a.split(" ")[0]));
+    enterApp({name:fullName,email,isAdmin:true,isMaint:false,isHQ:isAdm});
+    return;
+  }
+
+  if(!pass)return showErr("li-err","נא להזין קוד גישה");
+
+  const key="ort_u_"+fullName.replace(/[\s.@]/g,"_");
+  if(lsGet(key,null)){
+    document.getElementById("li-greet2").textContent=`ברוכה הבאה חזרה! 😊`;
+    showLS("ret");
+  } else {
+    document.getElementById("li-greet").textContent=`שלום! 👋`;
+    showLS("setpass");
+  }
+}
+
+function loginSetPass(){
+  const np=document.getElementById("li-np").value,np2=document.getElementById("li-np2").value;
+  document.getElementById("li-err2").style.display="none";
+  if(np.length<4)return showErr("li-err2","סיסמה חייבת להיות לפחות 4 תווים");
+  if(np!==np2)return showErr("li-err2","הסיסמאות אינן תואמות");
+  const key="ort_u_"+_lname.replace(/[\s.@]/g,"_");
+  lsSet(key,{pass:np,email:_lemail});
+  enterApp({name:_lname,email:_lemail,isAdmin:false,isMaint:false,isHQ:false});
+}
+
+function loginReturn(){
+  document.getElementById("li-err3").style.display="none";
+  const key="ort_u_"+_lname.replace(/[\s.@]/g,"_");
+  const stored=lsGet(key,null);
+  if(!stored)return showErr("li-err3","משתמש לא נמצא");
+  const rp=document.getElementById("li-rp").value;
+  if(stored.pass&&rp!==stored.pass)return showErr("li-err3","סיסמה שגויה");
+  enterApp({name:_lname,email:_lemail,isAdmin:false,isMaint:false,isHQ:false});
+}
+
+function showErr(id,msg){const el=document.getElementById(id);if(el){el.textContent=msg;el.style.display="block";}}
+
+function enterApp(sess){
+  session=sess;lsSet("ort_session",sess);
+  document.getElementById("login-screen").style.display="none";
+  document.getElementById("main-app").style.display="block";
+  if(sess.isAdmin||sess.isHQ||canAdmin())document.getElementById("admin-nav-btn").style.display="flex";
+  startSync();showScreen("dash");
+}
+
+function logout(){if(_sseSource){_sseSource.close();_sseSource=null;}for(const k in _sseCbs)delete _sseCbs[k];fbSubs.forEach(u=>typeof u==="function"&&u());fbSubs=[];session=null;_dataLoaded=false;lsSet("ort_session",null);location.reload();}
+
+(function(){
+  if(lsGet("ort_killed",false)){showKilled();return;}
+  const s=lsGet("ort_session",null);
+  if(s&&s.name){session=s;}else{showLS("init");return;}
+  document.getElementById("login-screen").style.display="none";
+  document.getElementById("main-app").style.display="block";
+  if(s.isAdmin||s.isHQ||ADMIN_USERS.some(a=>s.name.includes(a.split(" ")[0])))document.getElementById("admin-nav-btn").style.display="flex";
+  startSync();showScreen("dash");
+})();
+
+/* ══ DASHBOARD ══ */
+function renderDash(){
+  const h=new Date().getHours();
+  const gr=h<12?"בוקר טוב ☀️":h<17?"צהריים טובים 🌤️":"ערב טוב 🌙";
+  const today=new Date().getDay(),tc=today>=0&&today<=4?today:-1;
+  const openFaults=(appData.faults||[]).filter(f=>f.status!=="בוצע").length;
+  const newPraises=(appData.praises||[]).filter(p=>p.to===session.name&&!p.seen).length;
+  const myDuties=[];
+  if(tc>=0)SCHEDULE.breaks.forEach(br=>SCHEDULE.stations.forEach((st,si)=>{const n=getCell(br.id,si,tc);if(n&&isMyName(n))myDuties.push({label:br.label,time:br.time,st});}));
+  const cards=[
+    {icon:"📋",title:"תורנויות",sub:"לוח תורנויות",color:"#2c4a96",s:"duty",a:"af"},
+    {icon:"🔧",title:"תחזוקה",sub:"דיווח תקלות",color:"#0e7490",s:"faults",a:"af"},
+    {icon:"📱",title:"אנשי קשר",sub:"מדריך הצוות",color:"#4338ca",s:"contacts",a:"af"},
+    {icon:"📡",title:"מידע טכני",sub:"Wi-Fi · קודים",color:"#0f766e",s:"tech",a:"af"},
+    {icon:"📊",title:"לוח משותף",sub:"טיולים, תרגילים",color:"#1d4ed8",s:"board",a:"af"},
+    {icon:"💖",title:"פירגון",sub:"שלחי ושאי ✨",color:"#b02a6a",s:"praise",a:"ap"},
+    {icon:"🛡️",title:"פנייה לשומר",sub:"שחרור תלמיד · כניסת הורה",color:"#b45309",s:"guard",a:"af",w:1},
+  ];
+  document.getElementById("screen-dash").innerHTML=`
+    <div class="dev-credit">💻 פיתוח אפליקציה – לטם מחוליה</div>
+    <div class="glass" style="padding:16px 18px 14px;margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div style="font-size:12px;color:var(--muted)">${gr}</div>
+          <div style="font-size:21px;font-weight:900;line-height:1.2">${session.name}</div>
+          ${session.isAdmin||session.isHQ?'<span class="badge" style="background:rgba(245,158,11,.2);border:1px solid rgba(245,158,11,.5);color:#fbbf24">👑 הנהלה</span>':""}
+          ${session.isMaint?'<span class="badge" style="background:rgba(6,182,212,.2);border:1px solid rgba(6,182,212,.5);color:#67e8f9">🔧 טכנאי</span>':""}
+          ${newPraises>0?`<div style="margin-top:4px"><span class="badge" style="background:rgba(176,42,106,.2);border:1px solid rgba(176,42,106,.5);color:#f9a8d4">💖 ${newPraises} פירגון!</span></div>`:""}
+        </div>
+        <div id="live-clock" style="font-size:11px;color:var(--muted);font-weight:600;text-align:left;line-height:1.6"></div>
+      </div>
+      ${myDuties.length>0?`<div style="margin-top:12px;background:rgba(44,74,150,.3);border-radius:12px;padding:10px 14px;border:1px solid rgba(44,74,150,.5)"><div style="font-size:11px;color:#93c5fd;font-weight:700;margin-bottom:4px">📋 התורנות שלי היום</div>${myDuties.map(d=>`<div style="font-size:13px;font-weight:600;margin-bottom:2px">${d.label} · <span style="color:#fbbf24">${d.st}</span></div>`).join("")}</div>`:`<div style="margin-top:12px;background:rgba(16,185,129,.1);border-radius:12px;padding:10px 14px;border:1px solid rgba(16,185,129,.2);font-size:13px;color:#6ee7b7">✅ אין תורנות היום</div>`}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+      ${cards.map(c=>`<button class="card-btn ${c.a}" onclick="navTo('${c.s}')" style="${c.w?"grid-column:1/-1;":""}background:linear-gradient(145deg,${c.color}ee,${c.color}99);box-shadow:0 6px 22px ${c.color}55"><span class="icon">${c.icon}</span><span class="title">${c.title}</span><span class="sub">${c.sub}</span></button>`).join("")}
+    </div>
+    ${openFaults>0?`<button class="btn" onclick="navTo('faults')" style="width:100%;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:14px;padding:12px 16px;color:#fca5a5;display:flex;align-items:center;gap:10px;margin-bottom:14px"><span style="font-size:22px">🔧</span><div style="text-align:right"><div style="font-size:14px;font-weight:800">${openFaults} תקלות פתוחות</div><div style="font-size:11px;opacity:.7">לחץ לצפייה</div></div></button>`:""}
+  `;
+  (function tick(){const el=document.getElementById("live-clock");if(!el)return;const t=new Date();el.innerHTML=t.toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit",second:"2-digit"})+"<br>"+t.toLocaleDateString("he-IL",{weekday:"short",day:"numeric",month:"short"});setTimeout(tick,1000);})();
+}
+
+/* ══ DUTY ══ */
+function parseBreakMins(t){const p=t.split("–");function m(s){const[h,mm]=s.trim().split(":");return+h*60+(+mm||0);}return{start:m(p[0]),end:m(p[1]||p[0])};}
+function getCountdownHTML(){
+  const today=new Date().getDay(),tc=today>=0&&today<=4?today:-1;if(tc<0)return"";
+  const now=new Date(),cur=now.getHours()*60+now.getMinutes();
+  const myB=[];SCHEDULE.breaks.forEach(br=>{SCHEDULE.stations.forEach((_,si)=>{if(isMyName(getCell(br.id,si,tc))&&!myB.find(x=>x.id===br.id))myB.push(br);});});
+  if(!myB.length)return"";
+  for(const br of myB){
+    const{start,end}=parseBreakMins(br.time);
+    if(cur>=start&&cur<end)return`<div style="margin-bottom:12px;background:linear-gradient(135deg,rgba(176,42,106,.35),rgba(44,74,150,.35));border:1px solid rgba(176,42,106,.5);border-radius:14px;padding:12px 16px;display:flex;align-items:center;gap:10px"><span style="font-size:22px">🔴</span><div><div style="font-size:13px;font-weight:900;color:#f9a8d4">את/ה בתורנות עכשיו!</div><div style="font-size:11px;color:rgba(255,255,255,.6)">${br.label} · ${br.time}</div></div></div>`;
+    if(cur<start){const mm=String(start-cur).padStart(2,"0");return`<div style="margin-bottom:12px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.35);border-radius:14px;padding:12px 16px;display:flex;align-items:center;gap:10px"><span style="font-size:22px">⏱️</span><div><div style="font-size:13px;font-weight:900;color:#fbbf24">ההפסקה הבאה שלך בעוד: ${mm} דקות</div><div style="font-size:11px;color:rgba(255,255,255,.6)">${br.label} · ${br.time}</div></div></div>`;}
+  }
+  return"";
+}
+
+function dutySearch(q){
+  _dutyQ=q.trim().toLowerCase();
+  const el=document.getElementById("duty-search-results");
+  if(!el)return;
+  if(!_dutyQ){el.innerHTML="";return;}
+
+  const res=[];
+  SCHEDULE.breaks.forEach(br=>{
+    SCHEDULE.stations.forEach((st,si)=>{
+      [0,1,2,3,4].forEach(di=>{
+        const v=getCell(br.id,si,di);
+        if(v&&v.toLowerCase().includes(_dutyQ)){
+          res.push({br,st,day:DAY_NAMES[di],name:v,isMe:isMyName(v)});
+        }
+      });
+    });
+  });
+
+  if(!res.length){el.innerHTML=`<div style="text-align:center;padding:14px 0;color:var(--dim);font-size:13px">לא נמצאו תוצאות</div>`;return;}
+  el.innerHTML=res.slice(0,20).map(r=>`<div style="padding:10px 12px;border-radius:10px;margin-bottom:6px;background:${r.isMe?"rgba(176,42,106,.2)":"rgba(255,255,255,.05)"};border:1px solid ${r.isMe?"var(--mag)":"rgba(255,255,255,.1)"}"><div style="font-size:12px;color:var(--muted)">${r.br.label} · ${r.br.time} · יום ${r.day}</div><div style="font-size:13px;font-weight:700;color:${r.isMe?"#f9a8d4":"#fff"}">${r.name}</div><div style="font-size:11px;color:var(--muted);margin-top:2px">${r.st}</div></div>`).join("");
+}
+
+function renderDuty(){
+  const today=new Date().getDay(),tc=today>=0&&today<=4?today:-1;
+  let html=`
+    <div class="search-wrap" style="margin-bottom:14px">
+      <span class="si">🔍</span>
+      <input type="text" placeholder="חפש שם מורה בלוח..." oninput="dutySearch(this.value)" style="padding:11px 40px 11px 14px;border-radius:14px;border:1px solid var(--inp-border);background:var(--inp-bg);color:var(--inp-color);font-size:14px;outline:none;font-family:'Assistant',sans-serif;width:100%"/>
+    </div>
+    <div id="duty-search-results"></div>
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      ${[{k:"myduty",l:"📋 תורנויות היום"},{k:"full",l:"📊 לוח שנתי"},{k:"personal",l:"⭐ אישי"}].map((t,i)=>`<button class="btn" id="dtab-${t.k}" onclick="switchDTab('${t.k}')" style="flex:1;padding:9px 0;border-radius:12px;font-size:${i===1?11:13}px;background:${t.k==="myduty"?"linear-gradient(135deg,var(--navy),var(--mag))":"rgba(255,255,255,.08)"};color:#fff;border:${t.k==="myduty"?"none":"1px solid rgba(255,255,255,.15)"}">${t.l}</button>`).join("")}
+    </div>`;
+
+  html+=`<div id="dt-myduty">`;
+  html+=getCountdownHTML();
+  html+=`<div style="font-size:14px;font-weight:900;color:#f9a8d4;margin-bottom:12px">${tc<0?"📋 סוף שבוע":`📋 יום ${DAY_NAMES[tc]}`}</div>`;
+  if(tc>=0){
+    SCHEDULE.breaks.forEach(br=>{
+      let rows="";
+      SCHEDULE.stations.forEach((st,si)=>{
+        const name=getCell(br.id,si,tc);if(!name)return;
+        const me=isMyName(name);
+        const nKey=`note_${br.id}_${si}_${tc}`;
+        const note=(appData.dutyNotes||{})[nKey]||"";
+        const ds=new Date().toISOString().split("T")[0].replace(/-/g,"");
+        const rp=br.time.split("–")[0].trim().split(":");
+        const hh=(rp[0]||"09").padStart(2,"0"),mm=(rp[1]||"00").padStart(2,"0");
+        const endH=String(+hh+Math.floor((+mm+20)/60)).padStart(2,"0"),endM=String((+mm+20)%60).padStart(2,"0");
+        const calUrl=`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent("תורנות – "+st)}&dates=${ds}T${hh}${mm}00/${ds}T${endH}${endM}00&details=${encodeURIComponent("תורנות: "+st)}&ctz=Asia/Jerusalem`;
+        rows+=`<div style="padding:8px 10px;border-radius:10px;margin-bottom:6px;background:${me?"rgba(176,42,106,.2)":"rgba(255,255,255,.04)"};border:${me?"1px solid var(--mag)":"1px solid rgba(255,255,255,.06)"}">
+          <div style="display:flex;justify-content:space-between;align-items:center;${me?"margin-bottom:8px":""}">
+            <div><div style="font-size:11px;color:rgba(255,255,255,.4)">${si+1}. ${st}</div><div style="font-size:13px;font-weight:${me?900:600};color:${me?"#f9a8d4":"#fff"}">${name}</div></div>
+            ${me?`<div style="display:flex;gap:5px;flex-shrink:0"><button class="btn" onclick="openSubModal('${br.id}',${si})" style="background:rgba(249,115,22,.25);border:1px solid rgba(249,115,22,.5);border-radius:8px;padding:5px 8px;color:#fb923c;font-size:11px">🔄</button><a href="${calUrl}" target="_blank"><button class="btn" style="background:linear-gradient(135deg,var(--navy),#4338ca);border-radius:8px;padding:5px 9px;color:#fff;font-size:11px">📅</button></a></div>`:""}
+          </div>
+          ${note?`<div style="font-size:11px;color:#fbbf24;background:rgba(245,158,11,.15);border-radius:6px;padding:5px 8px;margin-bottom:6px;border:1px solid rgba(245,158,11,.3)">📝 ${note}</div>`:""}
+          ${me?`<div style="display:flex;gap:6px;align-items:center"><textarea id="note-${br.id}-${si}" placeholder="עדכון: ציוד שבור, משמעת..." style="flex:1;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:6px 10px;color:#fff;font-size:12px;resize:none;height:40px;outline:none;direction:rtl;font-family:'Assistant',sans-serif">${note}</textarea><button class="btn" onclick="saveDutyNote('${br.id}',${si},${tc})" style="background:linear-gradient(135deg,#10b981,#059669);border-radius:8px;padding:6px 10px;color:#fff;font-size:12px;font-weight:800;flex-shrink:0">💾</button></div>`:""}
+        </div>`;
+      });
+      if(rows)html+=`<div class="glass" style="padding:12px 14px;margin-bottom:10px"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><div style="font-size:13px;font-weight:800;color:#fbbf24">${br.label}</div><div style="font-size:11px;color:rgba(255,255,255,.5)">${br.time}</div></div>${rows}</div>`;
+    });
+  }
+  html+=`</div>`;
+
+  html+=`<div id="dt-full" style="display:none"><div style="font-size:13px;font-weight:900;color:rgba(255,255,255,.7);margin-bottom:12px">📊 לוח תורנויות שנתי</div>
+    ${SCHEDULE.breaks.map(br=>`<div style="margin-bottom:16px"><div style="font-size:13px;font-weight:800;color:#fbbf24;margin-bottom:6px">${br.label} · ${br.time}</div><div class="duty-table-wrap"><table class="duty-table"><thead><tr><th style="text-align:right;padding-right:8px">עמדה</th>${DAY_NAMES.map((d,i)=>`<th style="${i===tc?"background:#b02a6a":""}">${d}</th>`).join("")}</tr></thead><tbody>${SCHEDULE.stations.map((st,si)=>`<tr><td class="sc">${si+1}. ${st}</td>${[0,1,2,3,4].map(di=>{const v=getCell(br.id,si,di);return`<td class="${isMyName(v)?"mc":di===tc?"tc":""}">${v||""}</td>`;}).join("")}</tr>`).join("")}</tbody></table></div></div>`).join("")}
+  </div>`;
+
+  html+=`<div id="dt-personal" style="display:none"><div class="glass" style="padding:14px;margin-bottom:12px;border:1px solid rgba(176,42,106,.4)"><div style="font-size:13px;font-weight:800;color:#f9a8d4;margin-bottom:10px">➕ הוסף תורנות אישית</div><div class="g2" style="gap:8px"><div><span class="lbl">יום</span><select id="pd-day" class="inp-sm" style="direction:rtl">${DAY_NAMES.map((d,i)=>`<option value="${i}">${d}</option>`).join("")}</select></div><div><span class="lbl">שעה</span><input id="pd-time" class="inp-sm" placeholder="09:45"/></div></div><span class="lbl">מיקום</span><input id="pd-loc" class="inp-sm" placeholder="חצר דרומית" style="margin-bottom:8px"/><button class="btn" onclick="addPersonalDuty()" style="width:100%;padding:10px 0;border-radius:10px;background:linear-gradient(135deg,var(--mag),#8b1a5a);color:#fff;font-size:14px;font-weight:800">➕ שמור</button></div><div id="personal-list">${renderPersonalList()}</div></div>`;
+
+  document.getElementById("screen-duty").innerHTML=html;
+}
+
+function switchDTab(t){
+  ["myduty","full","personal"].forEach(k=>{
+    const c=document.getElementById("dt-"+k);if(c)c.style.display=k===t?"block":"none";
+    const b=document.getElementById("dtab-"+k);if(b){b.style.background=k===t?"linear-gradient(135deg,var(--navy),var(--mag))":"rgba(255,255,255,.08)";b.style.border=k===t?"none":"1px solid rgba(255,255,255,.15)";}
+  });
+}
+function renderPersonalList(){
+  const list=appData.myPersonalDuties||[];const today=new Date().getDay();
+  if(!list.length)return`<div style="text-align:center;padding:24px 0;color:rgba(255,255,255,.35);font-size:14px">עדיין לא הוספת תורנויות אישיות</div>`;
+  return list.map(p=>{
+    const isT=+p.day===today;
+    const ds=new Date().toISOString().split("T")[0].replace(/-/g,"");
+    const pts=(p.time||"09:00").split(":");
+    const hh=(pts[0]||"09").padStart(2,"0"),mm=(pts[1]||"00").padStart(2,"0");
+    const endH=String(+hh+Math.floor((+mm+20)/60)).padStart(2,"0"),endM=String((+mm+20)%60).padStart(2,"0");
+    const calUrl=`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent("תורנות – "+(p.location||""))}&dates=${ds}T${hh}${mm}00/${ds}T${endH}${endM}00&details=${encodeURIComponent("תורנות: "+(p.location||""))}&ctz=Asia/Jerusalem`;
+    return`<div class="pc ${isT?"today":""}"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div style="flex:1"><div class="dl">יום ${DAY_NAMES[+p.day]||""} · ${p.time||""}${isT?`<span style="background:var(--mag);color:#fff;border-radius:10px;padding:1px 8px;font-size:10px;margin-right:6px">היום!</span>`:""}</div><div class="ll">${p.location||""}</div></div><div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end"><a href="${calUrl}" target="_blank" style="text-decoration:none"><button class="btn" style="background:linear-gradient(135deg,var(--navy),#4338ca);border-radius:8px;padding:7px 11px;color:#fff;font-size:12px;white-space:nowrap">📅 יומן</button></a><button class="btn" onclick="delPersonalDuty('${p._key}')" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:6px 10px;color:#e53e3e;font-size:12px">🗑</button></div></div></div>`;
+  }).join("");
+}
+async function addPersonalDuty(){const day=document.getElementById("pd-day")?.value,time=document.getElementById("pd-time")?.value.trim(),loc=document.getElementById("pd-loc")?.value.trim();if(!time||!loc){toast("⚠️ נא למלא שעה ומיקום");return;}try{await fbPush("personalDuties/"+session.name.replace(/\s+/g,"_"),{day:+day,time,location:loc});toast("✅ התורנות נשמרה!");}catch(e){toast("❌ "+e.message);}}
+function delPersonalDuty(key){fbDel("personalDuties/"+session.name.replace(/\s+/g,"_")+"/"+key);}
+function saveDutyNote(brId,si,tc){const el=document.getElementById(`note-${brId}-${si}`);if(!el)return;fbPatch("dutyNotes",{[`note_${brId}_${si}_${tc}`]:el.value.trim()});toast("💾 נשמר!");}
+function openSubModal(bk,si){
+  const tc=new Date().getDay(),tcc=tc>=0&&tc<=4?tc:-1,cur=tcc>=0?getCell(bk,si,tcc):"";
+  openModal(`<div style="font-size:16px;font-weight:900;margin-bottom:14px;text-align:center">🔄 עדכון מחליפה</div><label class="lbl">שם המחליפה</label><input id="sub-name" class="inp" placeholder="שם מלא" value="${cur}"/><button class="btn" onclick="confirmSub('${bk}',${si})" style="width:100%;padding:12px 0;background:linear-gradient(135deg,var(--navy),var(--mag));border-radius:12px;color:#fff;font-size:15px;margin-bottom:8px">✓ עדכן</button><button class="btn" onclick="closeModal()" style="width:100%;padding:10px 0;background:rgba(255,255,255,.08);border-radius:12px;color:rgba(255,255,255,.6);font-size:14px">ביטול</button>`);
+}
+function confirmSub(bk,si){const val=document.getElementById("sub-name")?.value.trim();const tc=new Date().getDay(),di=tc>=0&&tc<=4?tc:-1;if(di<0){closeModal();return;}fbPatch("dutyOverride2",{[`${bk}_${si}_${di}`]:val});closeModal();toast("✅ המחליפה עודכנה!");}
+
+/* ══ FAULTS ══ */
+function renderFaults(){
+  const faults=appData.faults||[];
+  const canMoveBusy=f=>session.isMaint&&f.status==="חדש";
+  const canConfirm=f=>f.reporter===session.name&&f.status==="בטיפול";
+  const canDel=f=>session.isAdmin||session.isHQ||(f.reporter===session.name&&f.status==="חדש");
+  const stBadge=f=>{const cls=f.status==="חדש"?"sn":f.status==="בטיפול"?"sb":"sd";return`<span class="badge ${cls}">${f.status}</span>`;};
+  document.getElementById("screen-faults").innerHTML=`
+    ${!session.isMaint?`<div class="glass" style="padding:18px;margin-bottom:18px"><div style="font-size:16px;font-weight:900;margin-bottom:14px;color:#93c5fd">🔧 הגשת קריאת תקלה</div><div style="display:flex;gap:10px;margin-bottom:12px">${["מחשוב","אחזקה"].map(c=>`<button class="btn" id="fcat-${c}" onclick="selFC('${c}')" style="flex:1;padding:11px 0;border-radius:12px;font-size:14px;background:${c==="מחשוב"?"linear-gradient(135deg,var(--navy),var(--mag))":"rgba(255,255,255,.08)"};color:#fff;border:${c==="מחשוב"?"none":"1px solid rgba(255,255,255,.15)"}">${c==="מחשוב"?"💻 מחשוב":"🔨 אחזקה"}</button>`).join("")}</div><div id="fault-tech-note" style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:10px">📲 ישלח לאורי</div><label class="lbl">כיתה / מיקום *</label><input id="f-cls" class="inp" placeholder="כיתה 203"/><label class="lbl">תיאור *</label><textarea id="f-desc" class="inp" style="resize:none;height:72px" placeholder="תאר בקצרה..."></textarea><div id="f-sent" style="display:none;font-size:13px;color:#4ade80;text-align:center;margin-bottom:8px;font-weight:700">✅ נשלח!</div><button class="btn" onclick="submitFault()" style="width:100%;padding:13px 0;background:linear-gradient(135deg,var(--mag),#8b1a5a);border-radius:14px;color:#fff;font-size:16px">שלח קריאה 📲</button></div>`:""}
+    <div style="font-size:15px;font-weight:900;color:#93c5fd;margin-bottom:10px">${session.isMaint?"📋 כל התקלות":"📋 תקלות שדווחו"}</div>
+    ${faults.length===0?`<div style="text-align:center;padding:24px 0;color:var(--dim)">אין תקלות</div>`:""}
+    ${faults.map(f=>`<div class="glass" style="padding:14px 16px;margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px"><div style="flex:1"><div style="font-size:15px;font-weight:800">${f.category} · ${f.class||""}</div><div style="font-size:12px;color:var(--muted);margin-top:2px">${f.description||""}</div><div style="font-size:11px;color:var(--dim);margin-top:2px">${f.reporter||""} · ${f.ts||""}${session.isMaint&&f.status==="חדש"?'<span style="color:#fb923c"> · ממתין לטיפולך</span>':""}${f.reporter===session.name&&f.status==="בטיפול"?'<span style="color:#60a5fa"> · ממתין לאישורך</span>':""}</div></div>${stBadge(f)}</div><div style="display:flex;gap:8px;flex-wrap:wrap">${canMoveBusy(f)?`<button class="btn" onclick="setFS('${f._key}','בטיפול')" style="flex:1;padding:9px 0;background:linear-gradient(135deg,var(--navy),#4338ca);border-radius:10px;color:#fff;font-size:13px">🔵 בטיפול</button>`:""}${canConfirm(f)?`<button class="btn" onclick="setFS('${f._key}','בוצע')" style="flex:1;padding:9px 0;background:linear-gradient(135deg,#10b981,#059669);border-radius:10px;color:#fff;font-size:13px">✅ אישור</button>`:""}${canDel(f)?`<button class="btn" onclick="delF('${f._key}')" style="flex:1;padding:9px 0;background:rgba(239,68,68,.2);border:1px solid rgba(239,68,68,.4);border-radius:10px;color:#f87171;font-size:13px">🗑 מחק</button>`:""}</div></div>`).join("")}`;
+  window._fc="מחשוב";
+}
+function selFC(c){window._fc=c;["מחשוב","אחזקה"].forEach(x=>{const b=document.getElementById("fcat-"+x);if(b){b.style.background=x===c?"linear-gradient(135deg,var(--navy),var(--mag))":"rgba(255,255,255,.08)";b.style.border=x===c?"none":"1px solid rgba(255,255,255,.15)";}});const n=document.getElementById("fault-tech-note");if(n)n.textContent=`📲 ישלח ל-${c==="מחשוב"?"אורי":"קוסטיה"}`;}
+/* ── Guard (פנייה לשומר) ── */
+function renderGuard(){
+  const tabs=[{k:"release",l:"🎒 שחרור תלמיד"},{k:"parent",l:"👨‍👩‍👧 כניסת הורה"}];
+  document.getElementById("screen-guard").innerHTML=`<div class="glass" style="padding:18px;margin-bottom:18px"><div style="font-size:16px;font-weight:900;margin-bottom:14px;color:#93c5fd">🛡️ הודעה לשומר</div><label class="lbl">נושא ההודעה</label><div style="display:flex;gap:10px;margin-bottom:14px">${tabs.map(t=>`<button class="btn" id="gt-${t.k}" onclick="selGT('${t.k}')" style="flex:1;padding:11px 0;border-radius:12px;font-size:14px;color:#fff">${t.l}</button>`).join("")}</div><div id="g-release"><label class="lbl">שם התלמיד/ה *</label><input id="g-stu" class="inp" placeholder="שם מלא"/><label class="lbl">כיתה *</label><input id="g-cls" class="inp" placeholder="ח׳2"/></div><div id="g-parent" style="display:none"><label class="lbl">שם ההורה *</label><input id="g-par" class="inp" placeholder="שם מלא"/><label class="lbl">שעת הפגישה *</label><input id="g-time" class="inp" type="time"/></div><div style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:10px">📲 ישלח לשומר בוואטסאפ</div><div id="g-err" style="display:none;font-size:13px;color:#f87171;text-align:center;margin-bottom:8px;font-weight:700">יש למלא את כל השדות</div><div id="g-sent" style="display:none;font-size:13px;color:#4ade80;text-align:center;margin-bottom:8px;font-weight:700">✅ נשלח!</div><button class="btn" onclick="submitGuard()" style="width:100%;padding:13px 0;background:linear-gradient(135deg,var(--mag),#8b1a5a);border-radius:14px;color:#fff;font-size:16px">שלח לשומר 📲</button></div>`;
+  selGT("release");
+}
+function selGT(k){window._gt=k;["release","parent"].forEach(x=>{const b=document.getElementById("gt-"+x);if(b){b.style.background=x===k?"linear-gradient(135deg,var(--navy),var(--mag))":"rgba(255,255,255,.08)";b.style.border=x===k?"none":"1px solid rgba(255,255,255,.15)";}const f=document.getElementById("g-"+x);if(f)f.style.display=x===k?"block":"none";});const e=document.getElementById("g-err");if(e)e.style.display="none";}
+function submitGuard(){
+  const k=window._gt||"release",v=id=>(document.getElementById(id)?.value||"").trim();
+  let msg,ids;
+  if(k==="release"){const stu=v("g-stu"),cls=v("g-cls");ids=["g-stu","g-cls"];if(!stu||!cls)msg=null;else msg=`🎒 שחרור תלמיד\nתלמיד/ה: ${stu}\nכיתה: ${cls}\nמאשר/ת: ${session.name}`;}
+  else{const par=v("g-par"),tm=v("g-time");ids=["g-par","g-time"];if(!par||!tm)msg=null;else msg=`👨‍👩‍👧 כניסת הורה לבית הספר\nשם ההורה: ${par}\nשעת פגישה: ${tm}\nמוזמן/ת ע"י: ${session.name}`;}
+  const e=document.getElementById("g-err");
+  if(!msg){if(e)e.style.display="block";return;}
+  if(e)e.style.display="none";
+  window.open(`https://wa.me/972${GUARD_PHONE.replace(/^0/,"")}?text=${encodeURIComponent(msg)}`,"_blank");
+  ids.forEach(id=>{const el=document.getElementById(id);if(el)el.value="";});
+  const s=document.getElementById("g-sent");if(s){s.style.display="block";setTimeout(()=>s.style.display="none",3000);}
+}
+function submitFault(){const cls=document.getElementById("f-cls")?.value.trim(),desc=document.getElementById("f-desc")?.value.trim();if(!cls||!desc)return;const cat=window._fc||"מחשוב",ph=cat==="מחשוב"?ORI_PHONE:KOSTIA_PHONE;const ts=new Date().toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"});fbPush("faults",{category:cat,class:cls,description:desc,status:"חדש",reporter:session.name,ts});window.open(`https://wa.me/972${ph.replace(/^0/,"")}?text=${encodeURIComponent(`🔧 תקלה!\nסוג: ${cat}\nכיתה: ${cls}\nתיאור: ${desc}\nמ: ${session.name}`)}`,"_blank");document.getElementById("f-cls").value="";document.getElementById("f-desc").value="";const s=document.getElementById("f-sent");if(s){s.style.display="block";setTimeout(()=>s.style.display="none",3000);}}
+function setFS(k,status){fbPatch("faults/"+k,{status});}
+function delF(k){if(!confirm("למחוק את התקלה?"))return;fbDel("faults/"+k);}
+
+/* ══ CONTACTS ══ */
+let _cq="";
+function renderContacts(){
+  const list=(appData.contacts||[]).filter(c=>!_cq||c.name?.includes(_cq)||c.role?.includes(_cq));
+  const ce=canAdmin();
+  document.getElementById("screen-contacts").innerHTML=`
+    <div style="position:relative;margin-bottom:12px"><span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:14px">🔍</span><input class="inp" placeholder="חפש שם או תפקיד..." style="padding-right:38px;margin-bottom:0" oninput="contactSearch(this.value)"/></div>
+    ${ce?`<button class="btn" onclick="togCF()" style="width:100%;margin-bottom:12px;padding:11px 0;border-radius:14px;background:linear-gradient(135deg,var(--navy),var(--mag));color:#fff;font-size:14px">➕ הוסף איש קשר</button><div id="cf" style="display:none" class="glass" style="padding:16px;margin-bottom:12px"><div class="g2" style="gap:8px"><div><label class="lbl">שם</label><input id="cf-name" class="inp-sm"/></div><div><label class="lbl">תפקיד</label><input id="cf-role" class="inp-sm"/></div></div><div class="g2" style="gap:8px"><div><label class="lbl">טלפון</label><input id="cf-phone" class="inp-sm" style="direction:ltr"/></div><div><label class="lbl">אימייל</label><input id="cf-email" class="inp-sm" style="direction:ltr"/></div></div><div style="display:flex;gap:8px;margin-top:4px"><button class="btn" onclick="saveC()" style="flex:1;padding:10px 0;border-radius:12px;background:linear-gradient(135deg,var(--navy),var(--mag));color:#fff;font-size:14px">שמור ✓</button><button class="btn" onclick="togCF()" style="padding:10px 14px;border-radius:12px;background:rgba(255,255,255,.08);color:rgba(255,255,255,.6);font-size:14px">ביטול</button></div></div>`:""}
+    ${list.map(c=>`<div class="glass" style="padding:14px 16px;margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div><div style="font-size:16px;font-weight:800">${c.name||""}</div><div style="font-size:12px;color:#93c5fd;margin-top:2px">${c.role||""}</div></div>${ce?`<div style="display:flex;gap:6px"><button class="btn" onclick="editC('${c._key}')" style="background:rgba(99,102,241,.2);border:1px solid rgba(99,102,241,.4);border-radius:8px;padding:6px 9px;color:#818cf8;font-size:13px">✏️</button><button class="btn" onclick="fbDel('contacts/${c._key}')" style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:6px 9px;color:#f87171;font-size:13px">🗑</button></div>`:""}</div><div style="display:flex;gap:8px;margin-top:10px">${c.phone?`<a href="tel:${c.phone}" style="flex:1;background:linear-gradient(135deg,var(--navy),#4338ca);border-radius:10px;padding:9px 0;text-align:center;color:#fff;font-size:13px;font-weight:700;text-decoration:none">📞 ${c.phone}</a>`:""}${c.email?`<a href="mailto:${c.email}" style="flex:1;background:rgba(255,255,255,.08);border-radius:10px;padding:9px 0;text-align:center;color:#fff;font-size:13px;font-weight:700;text-decoration:none;border:1px solid rgba(255,255,255,.15)">✉️ אימייל</a>`:""}</div></div>`).join("")}
+    ${list.length===0?`<div style="text-align:center;padding:24px 0;color:var(--dim)">אין אנשי קשר</div>`:""}`;
+  window._editCKey=null;
+}
+function contactSearch(q){_cq=q;renderContacts();}
+function togCF(){const f=document.getElementById("cf");if(f)f.style.display=f.style.display==="none"?"block":"none";window._editCKey=null;}
+function saveC(){const name=document.getElementById("cf-name")?.value.trim(),role=document.getElementById("cf-role")?.value.trim(),phone=document.getElementById("cf-phone")?.value.trim(),email=document.getElementById("cf-email")?.value.trim();if(!name)return;if(window._editCKey)fbPatch("contacts/"+window._editCKey,{name,role,phone,email});else fbPush("contacts",{name,role,phone,email});togCF();}
+function editC(key){const c=(appData.contacts||[]).find(x=>x._key===key);if(!c)return;window._editCKey=key;const f=document.getElementById("cf");if(f)f.style.display="block";document.getElementById("cf-name").value=c.name||"";document.getElementById("cf-role").value=c.role||"";document.getElementById("cf-phone").value=c.phone||"";document.getElementById("cf-email").value=c.email||"";}
+
+/* ══ TECH ══ */
+function renderTech(){
+  const ti=appData.techInfo||{wifi:[],copier:[],gates:[]};
+  const secs=[{key:"wifi",title:"📶 Wi-Fi",color:"#06b6d4",kL:"name",kV:"password",lL:"שם רשת",lV:"סיסמה",getL:i=>i.name,getV:i=>i.password},{key:"copier",title:"🖨️ מדפסות",color:"#8b5cf6",kL:"location",kV:"code",lL:"מיקום",lV:"קוד",getL:i=>i.location,getV:i=>i.code},{key:"gates",title:"🚪 שערים",color:"#f97316",kL:"name",kV:"code",lL:"שם שער",lV:"קוד",getL:i=>i.name,getV:i=>i.code}];
+  document.getElementById("screen-tech").innerHTML=secs.map(s=>`<div style="margin-bottom:22px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font-size:14px;font-weight:800;color:${s.color};display:flex;align-items:center;gap:6px"><div style="width:3px;height:16px;background:${s.color};border-radius:2px"></div>${s.title}</div>${canAdmin()?`<button class="btn" onclick="togTF('${s.key}')" style="background:rgba(255,255,255,.08);border-radius:8px;padding:4px 10px;color:rgba(255,255,255,.7);font-size:12px">＋</button>`:""}</div><div id="tf-${s.key}" style="display:none" class="glass" style="padding:12px;margin-bottom:10px"><label class="lbl">${s.lL}</label><input id="tf-${s.key}-l" class="inp-sm" placeholder="${s.lL}"/><label class="lbl">${s.lV}</label><input id="tf-${s.key}-v" class="inp-sm" placeholder="${s.lV}"/><button class="btn" onclick="addTI('${s.key}','${s.kL}','${s.kV}')" style="width:100%;padding:9px 0;background:linear-gradient(135deg,${s.color},${s.color}99);border-radius:10px;color:#fff;font-size:14px">➕ הוסף</button></div>${(Array.isArray(ti[s.key])?ti[s.key]:Object.values(ti[s.key]||{})).map((item,i)=>`<div class="glass" style="display:flex;justify-content:space-between;align-items:center;padding:13px 16px;margin-bottom:8px"><div><div style="font-size:12px;color:var(--muted)">${s.getL(item)}</div><div style="font-size:21px;font-weight:900;letter-spacing:3px">${s.getV(item)}</div></div><div style="display:flex;gap:6px"><button class="btn" id="tcopy-${s.key}-${i}" onclick="cpTI('${s.getV(item)}','${s.key}-${i}')" style="background:rgba(255,255,255,.12);border-radius:10px;padding:8px 13px;color:#fff;font-size:12px">העתק</button>${canAdmin()?`<button class="btn" onclick="delTI('${s.key}',${i})" style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);border-radius:10px;padding:8px 10px;color:#f87171;font-size:13px">🗑</button>`:""}</div></div>`).join("")}${!(ti[s.key]&&(Array.isArray(ti[s.key])?ti[s.key].length:Object.keys(ti[s.key]).length))?`<div style="text-align:center;padding:10px 0;color:var(--dim);font-size:13px">אין פריטים</div>`:""}</div>`).join("");
+}
+function togTF(k){const el=document.getElementById("tf-"+k);if(el)el.style.display=el.style.display==="none"?"block":"none";}
+function addTI(key,kL,kV){const l=document.getElementById("tf-"+key+"-l")?.value.trim(),v=document.getElementById("tf-"+key+"-v")?.value.trim();if(!l||!v)return;const cur=appData.techInfo?.[key]||[];const arr=Array.isArray(cur)?cur:Object.values(cur);arr.push({[kL]:l,[kV]:v});fbWrite("techInfo/"+key,arr);togTF(key);}
+function delTI(key,idx){const cur=appData.techInfo?.[key]||[];const arr=(Array.isArray(cur)?cur:Object.values(cur)).filter((_,i)=>i!==idx);fbWrite("techInfo/"+key,arr);}
+function cpTI(val,id){navigator.clipboard.writeText(val).catch(()=>{});const btn=document.getElementById("tcopy-"+id);if(btn){btn.textContent="✓ הועתק";btn.style.background="linear-gradient(135deg,#10b981,#059669)";setTimeout(()=>{btn.textContent="העתק";btn.style.background="rgba(255,255,255,.12)";},2000);}}
+
+/* ══ BOARD ══ */
+let _bTab="trips";
+function renderBoard(){
+  document.getElementById("screen-board").innerHTML=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">${[{k:"trips",l:"🚌 טיולים"},{k:"drills",l:"🛡️ תרגילים"},{k:"vaccines",l:"💉 חיסונים"},{k:"faultb",l:"🔧 תקלות"}].map(t=>`<button class="btn" id="btab-${t.k}" onclick="swBTab('${t.k}')" style="padding:8px 14px;border-radius:12px;font-size:13px;background:${t.k===_bTab?"linear-gradient(135deg,var(--navy),var(--mag))":"rgba(255,255,255,.08)"};color:#fff;border:${t.k===_bTab?"none":"1px solid rgba(255,255,255,.15)"}">${t.l}</button>`).join("")}</div><div id="board-content">${renderBTab(_bTab)}</div>`;
+}
+function swBTab(t){_bTab=t;["trips","drills","vaccines","faultb"].forEach(k=>{const b=document.getElementById("btab-"+k);if(b){b.style.background=k===t?"linear-gradient(135deg,var(--navy),var(--mag))":"rgba(255,255,255,.08)";b.style.border=k===t?"none":"1px solid rgba(255,255,255,.15)";}});document.getElementById("board-content").innerHTML=renderBTab(t);}
+function renderBTab(t){const b=appData.sharedBoard||[];if(t==="trips")return renderBTrips(b.filter(e=>e.cat==="trip"));if(t==="drills")return renderBDrills(b.filter(e=>e.cat==="drill"));if(t==="vaccines")return renderBVax(b.filter(e=>e.cat==="vaccine"));if(t==="faultb")return renderBFaults(b.filter(e=>e.cat==="boardFault"));return"";}
+function delBE(k){fbDel("sharedBoard/"+k);}
+function renderBTrips(entries){const allS=entries.length>0&&entries.every(e=>e.signed);return`<div class="glass" style="padding:16px;margin-bottom:14px;border:1px solid rgba(249,115,22,.35)"><div style="font-size:14px;font-weight:800;color:#fb923c;margin-bottom:12px">➕ הוסף כיתה לטיול</div><label class="lbl">👩‍🏫 שם המורה</label><input id="bt-t" class="inp-sm" value="${session.name}"/><label class="lbl">📅 תאריך</label><input id="bt-d" class="inp-sm" placeholder="15/06/2025"/><label class="lbl">📍 מקום</label><input id="bt-p" class="inp-sm" placeholder="תל אביב"/><div class="g2" style="gap:8px;margin-bottom:2px"><div><label class="lbl">כיתה *</label><input id="bt-c" class="inp-sm" placeholder="י׳1"/></div><div><label class="lbl">תלמידים</label><input id="bt-n" class="inp-sm" type="number" placeholder="28"/></div></div><label style="display:flex;align-items:center;gap:10px;margin:10px 0 14px;cursor:pointer"><div id="bt-sb" onclick="togSign(this)" style="width:24px;height:24px;border-radius:6px;border:2px solid rgba(255,255,255,.3);background:transparent;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;font-size:14px;transition:all .2s"></div><span style="font-size:13px;font-weight:700">✍️ אישור יציאה חתום</span></label><button class="btn" onclick="addBTrip()" style="width:100%;padding:12px 0;background:linear-gradient(135deg,#f97316,#ea580c);border-radius:12px;color:#fff;font-size:15px;font-weight:800">📢 פרסם</button></div>${entries.length>0?`<div class="glass" style="padding:10px 14px;margin-bottom:10px;border:1px solid ${allS?"rgba(16,185,129,.4)":"rgba(249,115,22,.4)"}"><div style="font-size:13px;font-weight:800;color:${allS?"#4ade80":"#fb923c"}">${allS?"✅ כל האישורים חתומים":`⚠️ ${entries.filter(e=>!e.signed).length} ללא חתימה`}</div></div>`:""}${entries.map(e=>`<div class="glass" style="padding:14px 16px;margin-bottom:10px;border:1px solid ${e.signed?"rgba(16,185,129,.35)":"rgba(249,115,22,.25)"}"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="flex:1"><div style="font-size:15px;font-weight:900;margin-bottom:6px">כיתה ${e.class||""}</div><div style="display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:12px"><span style="color:rgba(255,255,255,.5)">👩‍🏫</span><span style="font-weight:700">${e.teacher||""}</span>${e.date?`<span style="color:rgba(255,255,255,.5)">📅</span><span style="font-weight:700">${e.date}</span>`:""}${e.place?`<span style="color:rgba(255,255,255,.5)">📍</span><span style="font-weight:700">${e.place}</span>`:""}<span style="color:rgba(255,255,255,.5)">👥</span><span style="font-weight:700">${e.count||0}</span><span style="color:rgba(255,255,255,.5)">✍️</span><span style="font-weight:700;color:${e.signed?"#4ade80":"#f87171"}">${e.signed?"✅":"❌"}</span></div></div>${(session.isAdmin||e.teacher===session.name)?`<button class="btn" onclick="delBE('${e._key}')" style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:6px 9px;color:#f87171;font-size:13px;margin-right:8px">🗑</button>`:""}</div></div>`).join("")}${entries.length===0?`<div style="text-align:center;padding:24px 0;color:var(--dim)">אין דיווחי טיול</div>`:""}`;  }
+window._bSigned=false;
+function togSign(box){window._bSigned=!window._bSigned;box.style.background=window._bSigned?"#10b981":"transparent";box.style.borderColor=window._bSigned?"#10b981":"rgba(255,255,255,.3)";box.textContent=window._bSigned?"✓":"";}
+function addBTrip(){const cls=document.getElementById("bt-c")?.value.trim();if(!cls){toast("⚠️ נא להזין כיתה");return;}const ts=new Date().toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"});fbPush("sharedBoard",{cat:"trip",teacher:document.getElementById("bt-t")?.value.trim()||session.name,date:document.getElementById("bt-d")?.value.trim()||"",place:document.getElementById("bt-p")?.value.trim()||"",class:cls,count:+(document.getElementById("bt-n")?.value||0),signed:window._bSigned,ts});window._bSigned=false;toast("✅ פורסם!");}
+function renderBDrills(entries){return`<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px"><button class="btn" onclick="openDrillF('rockets')" style="background:linear-gradient(135deg,#ef4444,#b91c1c);border-radius:18px;padding:22px 10px;text-align:center;color:#fff"><div style="font-size:28px;margin-bottom:6px">🚀</div><div style="font-size:13px;font-weight:900">ירי רקטות</div></button><button class="btn" onclick="openDrillF('earthquake')" style="background:linear-gradient(135deg,#f97316,#c2410c);border-radius:18px;padding:22px 10px;text-align:center;color:#fff"><div style="font-size:28px;margin-bottom:6px">🌍</div><div style="font-size:13px;font-weight:900">רעידת אדמה</div></button></div><div id="drill-form"></div>${entries.map(e=>`<div class="glass" style="padding:12px 16px;margin-bottom:8px;border:1px solid ${e.drill==="rockets"?"rgba(239,68,68,.3)":"rgba(249,115,22,.3)"}"><div style="display:flex;justify-content:space-between"><div><div style="font-size:14px;font-weight:900">${e.drill==="rockets"?"🚀":"🌍"} כיתה ${e.class||""}</div><div style="font-size:12px;color:var(--muted);margin-top:2px">👩‍🏫 ${e.teacher||""} · 👥 ${e.count||0}${e.shelter?" · 🏠 "+e.shelter:""}</div></div>${(session.isAdmin||e.teacher===session.name)?`<button class="btn" onclick="delBE('${e._key}')" style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:6px 9px;color:#f87171;font-size:13px">🗑</button>`:""}</div></div>`).join("")}${entries.length===0?`<div style="text-align:center;padding:10px 0;color:var(--dim)">אין דיווחי תרגיל</div>`:""}`;  }
+function openDrillF(type){document.getElementById("drill-form").innerHTML=`<div class="glass" style="padding:14px;margin-bottom:12px;border:1px solid ${type==="rockets"?"rgba(239,68,68,.4)":"rgba(249,115,22,.4)"}"><div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><span style="font-size:20px">${type==="rockets"?"🚀":"🌍"}</span><div style="font-size:14px;font-weight:900;flex:1">${type==="rockets"?"ירי רקטות":"רעידת אדמה"}</div><button class="btn" onclick="document.getElementById('drill-form').innerHTML=''" style="background:rgba(255,255,255,.1);border-radius:8px;padding:4px 10px;color:rgba(255,255,255,.6);font-size:12px">סגור</button></div><label class="lbl">שם המורה</label><input id="dr-t" class="inp-sm" value="${session.name}"/><div class="g2" style="gap:8px"><div><label class="lbl">כיתה *</label><input id="dr-c" class="inp-sm" placeholder="י׳1"/></div><div><label class="lbl">תלמידים</label><input id="dr-n" class="inp-sm" type="number" placeholder="28"/></div></div>${type==="rockets"?`<label class="lbl">מקלט</label><input id="dr-s" class="inp-sm" placeholder="מקלט 3"/>`:"<input id='dr-s' style='display:none'/>"}<button class="btn" onclick="addBDrill('${type}')" style="width:100%;padding:10px 0;background:${type==="rockets"?"linear-gradient(135deg,#ef4444,#b91c1c)":"linear-gradient(135deg,#f97316,#c2410c)"};border-radius:10px;color:#fff;font-size:14px;margin-top:6px">📢 פרסם</button></div>`;}
+function addBDrill(type){const cls=document.getElementById("dr-c")?.value.trim();if(!cls)return;const ts=new Date().toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"});fbPush("sharedBoard",{cat:"drill",drill:type,teacher:document.getElementById("dr-t")?.value.trim()||session.name,class:cls,count:+(document.getElementById("dr-n")?.value||0),shelter:document.getElementById("dr-s")?.value.trim()||"",ts});document.getElementById("drill-form").innerHTML="";}
+function renderBVax(entries){return`<div class="glass" style="padding:12px;margin-bottom:12px;border:1px solid rgba(16,185,129,.3)"><div class="g2" style="gap:8px"><div><label class="lbl">כיתה *</label><input id="bv-c" class="inp-sm" placeholder="י׳1"/></div><div><label class="lbl">תאריך *</label><input id="bv-d" class="inp-sm" placeholder="01/09/2025"/></div></div><button class="btn" onclick="addBVax()" style="width:100%;padding:10px 0;background:linear-gradient(135deg,#10b981,#059669);border-radius:10px;color:#fff;font-size:14px;margin-top:4px">📢 פרסם</button></div>${entries.map(e=>`<div class="glass" style="padding:12px 16px;margin-bottom:8px;border:1px solid rgba(16,185,129,.2);display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:15px;font-weight:800">כיתה ${e.class||""}</div><div style="font-size:12px;color:#34d399;margin-top:2px">📅 ${e.date||""} · ${e.reporter||""}</div></div>${(session.isAdmin||e.reporter===session.name)?`<button class="btn" onclick="delBE('${e._key}')" style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:6px 9px;color:#f87171;font-size:13px">🗑</button>`:""}</div>`).join("")}${entries.length===0?`<div style="text-align:center;padding:10px 0;color:var(--dim)">אין דיווחי חיסונים</div>`:""}`;  }
+function addBVax(){const cls=document.getElementById("bv-c")?.value.trim(),date=document.getElementById("bv-d")?.value.trim();if(!cls||!date)return;fbPush("sharedBoard",{cat:"vaccine",class:cls,date,reporter:session.name,ts:new Date().toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"})});}
+function renderBFaults(entries){return`<div class="glass" style="padding:12px;margin-bottom:12px"><div style="display:flex;gap:8px;margin-bottom:10px">${["מחשוב","אחזקה"].map(c=>`<button class="btn" id="bfc-${c}" onclick="selBFC('${c}')" style="flex:1;padding:9px 0;border-radius:10px;font-size:13px;background:${c==="מחשוב"?"linear-gradient(135deg,var(--navy),var(--mag))":"rgba(255,255,255,.08)"};color:#fff">${c==="מחשוב"?"💻 מחשוב":"🔨 אחזקה"}</button>`).join("")}</div><label class="lbl">כיתה *</label><input id="bf-c" class="inp-sm" placeholder="כיתה 203"/><label class="lbl">פירוט *</label><textarea id="bf-d" class="inp-sm" style="height:60px;resize:none" placeholder="תאר..."></textarea><div id="bf-n" style="font-size:11px;color:rgba(255,255,255,.4);margin-bottom:8px">📲 ישלח לאורי</div><div id="bf-s" style="display:none;font-size:12px;color:#4ade80;text-align:center;margin-bottom:6px;font-weight:700">✅ נשלח!</div><button class="btn" onclick="addBFault()" style="width:100%;padding:10px 0;background:linear-gradient(135deg,var(--mag),#8b1a5a);border-radius:10px;color:#fff;font-size:14px">📢 פרסם ושלח ווצאפ</button></div>${entries.map(e=>`<div class="glass" style="padding:12px 16px;margin-bottom:8px"><div style="display:flex;justify-content:space-between"><div><div style="font-size:14px;font-weight:800">${e.category||""} · כיתה ${e.class||""}</div><div style="font-size:12px;color:var(--muted);margin-top:2px">👩‍🏫 ${e.reporter||""} · ${e.description||""}</div></div>${(session.isAdmin||e.reporter===session.name)?`<button class="btn" onclick="delBE('${e._key}')" style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:6px 9px;color:#f87171;font-size:13px">🗑</button>`:""}</div></div>`).join("")}${entries.length===0?`<div style="text-align:center;padding:10px 0;color:var(--dim)">אין תקלות בלוח</div>`:""}`;  }
+window._bfc="מחשוב";
+function selBFC(c){window._bfc=c;["מחשוב","אחזקה"].forEach(x=>{const b=document.getElementById("bfc-"+x);if(b)b.style.background=x===c?"linear-gradient(135deg,var(--navy),var(--mag))":"rgba(255,255,255,.08)";});const n=document.getElementById("bf-n");if(n)n.textContent=`📲 ישלח ל-${c==="מחשוב"?"אורי":"קוסטיה"}`;}
+function addBFault(){const cls=document.getElementById("bf-c")?.value.trim(),desc=document.getElementById("bf-d")?.value.trim();if(!cls||!desc)return;const cat=window._bfc||"מחשוב",ph=cat==="מחשוב"?ORI_PHONE:KOSTIA_PHONE;fbPush("sharedBoard",{cat:"boardFault",category:cat,class:cls,description:desc,reporter:session.name,ts:new Date().toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"})});window.open(`https://wa.me/972${ph.replace(/^0/,"")}?text=${encodeURIComponent(`🔧 תקלה!\nסוג: ${cat}\nכיתה: ${cls}\nתיאור: ${desc}\nמ: ${session.name}`)}`,"_blank");document.getElementById("bf-c").value="";document.getElementById("bf-d").value="";const s=document.getElementById("bf-s");if(s){s.style.display="block";setTimeout(()=>s.style.display="none",3000);}}
+
+/* ══ PRAISE ══ */
+function renderPraise(){
+  (appData.praises||[]).filter(p=>p.to===session.name&&!p.seen).forEach(p=>fbPatch("praises/"+p._key,{seen:true}));
+  const all=appData.praises||[],mine=all.filter(p=>p.to===session.name).slice(0,5),total=all.length;
+  document.getElementById("screen-praise").innerHTML=`
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><div style="font-size:20px">🗓️</div><div><div style="font-size:13px;font-weight:900;color:#f9a8d4">קיר הפירגון היומי</div><div style="font-size:11px;color:var(--muted)">מתאפס כל יום בחצות · ${total} פירגונים היום</div></div></div>
+    <div class="glass" style="padding:18px;margin-bottom:16px;border:1px solid rgba(176,42,106,.4);animation:glowPulse 3s ease-in-out infinite">
+      <div style="font-size:16px;font-weight:900;color:#f9a8d4;margin-bottom:12px">💖 שלחי פירגון לעמית ✨</div>
+      <label class="lbl">למי?</label><input id="pr-to" class="inp" placeholder="שם העמית..."/>
+      <label class="lbl">הודעה</label><textarea id="pr-msg" class="inp" style="resize:none;height:72px" placeholder="כל הכבוד על..."></textarea>
+      <div id="pr-sent" style="display:none;font-size:13px;color:#4ade80;text-align:center;margin-bottom:8px;font-weight:700">✅ הפירגון נשלח! 💖🎉</div>
+      <button class="btn" onclick="sendPraise()" style="width:100%;padding:13px 0;background:linear-gradient(135deg,var(--mag),#8b1a5a);border-radius:14px;color:#fff;font-size:16px;animation:pulseM 2s infinite">שלחי פירגון 💖</button>
+    </div>
+    ${mine.length>0?`<div style="font-size:14px;font-weight:900;color:#f9a8d4;margin-bottom:8px">💌 פירגונים שקיבלת היום</div>${mine.map(p=>`<div class="glass" style="padding:13px 16px;margin-bottom:8px;border:1px solid rgba(176,42,106,.4);background:rgba(176,42,106,.1)"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">מ-${p.from||""} · ${p.ts||""}</div><div style="font-size:14px;font-weight:700;line-height:1.5">"${p.msg||""}"</div></div>`).join("")}`:""}
+    ${all.length>0?`<div style="font-size:13px;font-weight:800;color:var(--muted);margin-bottom:8px;margin-top:4px">📋 כל הפירגונים של היום</div>${all.slice(0,30).map(p=>`<div class="glass" style="padding:11px 14px;margin-bottom:6px;border:1px solid rgba(255,255,255,.08)"><div style="font-size:11px;color:var(--muted);margin-bottom:2px">💖 ${p.from||""} → ${p.to||""} · ${p.ts||""}</div><div style="font-size:13px">${p.msg||""}</div></div>`).join("")}`:`<div style="text-align:center;padding:24px 0;color:var(--dim)">עדיין אין פירגונים היום 💖<br><span style="font-size:12px">היי הראשונה לפרגן!</span></div>`}`;
+}
+function sendPraise(){
+  const to=document.getElementById("pr-to")?.value.trim(),msg=document.getElementById("pr-msg")?.value.trim();if(!to||!msg)return;
+  const now=new Date();
+  fbPush("praises",{from:session.name,to,msg,dateKey:todayStr(),ts:now.toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"}),seen:false});
+  document.getElementById("pr-to").value="";document.getElementById("pr-msg").value="";
+  launchConfetti();
+  const s=document.getElementById("pr-sent");if(s){s.style.display="block";setTimeout(()=>s.style.display="none",4000);}
+}
+
+/* ══ ADMIN ══ */
+let _aTab="board";
+function renderAdmin(){
+  if(!canAdmin()&&!session.isAdmin){document.getElementById("screen-admin").innerHTML=`<div style="text-align:center;padding:40px 0;color:var(--dim)">⛔ אין הרשאה</div>`;return;}
+  const today=new Date().getDay(),tc=today>=0&&today<=4?today:-1;
+  document.getElementById("screen-admin").innerHTML=`<div style="background:rgba(245,158,11,.08);border-bottom:1px solid rgba(245,158,11,.12);padding:10px 0 0;margin:-14px -14px 14px"><div style="display:flex;gap:6px;padding:0 14px 10px;overflow-x:auto">${[{k:"board",l:"📋 לוח תורנויות"},{k:"contacts",l:"📱 אנשי קשר"},{k:"school",l:"🏫 הגדרות"}].map(t=>`<button class="btn" data-atab="${t.k}" onclick="swATab('${t.k}')" style="background:rgba(255,255,255,.08);border-radius:12px;padding:8px 14px;color:#fff;font-size:13px;white-space:nowrap">${t.l}</button>`).join("")}</div></div><div id="admin-content">${renderATab(_aTab,tc)}</div>`;
+  swATab(_aTab);
+}
+function swATab(t){_aTab=t;const today=new Date().getDay(),tc=today>=0&&today<=4?today:-1;document.querySelectorAll("[data-atab]").forEach(b=>{b.style.background=b.dataset.atab===t?"linear-gradient(135deg,#f59e0b,#d97706)":"rgba(255,255,255,.08)";});const c=document.getElementById("admin-content");if(c)c.innerHTML=renderATab(t,tc);}
+function renderATab(t,tc){if(t==="board")return renderAdminBoard(tc);if(t==="contacts"){renderContacts();return document.getElementById("screen-contacts").innerHTML||"";}if(t==="school")return`<div class="glass" style="padding:18px"><div style="font-size:15px;font-weight:900;color:#fbbf24;margin-bottom:14px">🏫 פרטי בית הספר</div><label class="lbl">שם בית הספר</label><input id="as-n" class="inp" value="${appData.settings?.schoolName||""}"/><label class="lbl">סלוגן</label><input id="as-s" class="inp" value="${appData.settings?.slogan||""}"/><button class="btn" onclick="saveSchool()" style="width:100%;padding:12px 0;background:linear-gradient(135deg,#f59e0b,#d97706);border-radius:12px;color:#fff;font-size:14px">שמור ✓</button></div>`;return"";}
+function saveSchool(){fbPatch("settings",{schoolName:document.getElementById("as-n")?.value.trim(),slogan:document.getElementById("as-s")?.value.trim()});toast("✅ נשמר!");}
+function renderAdminBoard(tc){return`<div style="font-size:13px;font-weight:900;color:#fbbf24;margin-bottom:12px">👑 עריכת לוח תורנויות</div><div style="display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;padding-bottom:4px">${SCHEDULE.breaks.map(b=>`<button class="btn" id="abk-${b.id}" onclick="selABk('${b.id}')" style="padding:8px 12px;border-radius:12px;font-size:11px;white-space:nowrap;background:${b.id===(window._abk||"a")?"linear-gradient(135deg,var(--navy),var(--mag))":"rgba(255,255,255,.1)"};color:#fff">${b.label}<br><span style="font-size:9px;opacity:.7">${b.time}</span></button>`).join("")}</div><div id="admin-break-tbl">${renderABkTable(window._abk||"a",tc)}</div>`;}
+window._abk="a";
+function selABk(id){window._abk=id;const tc=new Date().getDay();SCHEDULE.breaks.forEach(b=>{const btn=document.getElementById("abk-"+b.id);if(btn)btn.style.background=b.id===id?"linear-gradient(135deg,var(--navy),var(--mag))":"rgba(255,255,255,.1)";});const tbl=document.getElementById("admin-break-tbl");if(tbl)tbl.innerHTML=renderABkTable(id,tc>=0&&tc<=4?tc:-1);}
+function renderABkTable(bk,tc){return`<div class="duty-table-wrap"><table class="duty-table"><thead><tr><th style="text-align:right;padding-right:8px">עמדה</th>${DAY_NAMES.map((d,i)=>`<th style="${i===tc?"background:#b02a6a":""}">${d}</th>`).join("")}</tr></thead><tbody>${SCHEDULE.stations.map((st,si)=>`<tr><td class="sc">${si+1}. ${st}</td>${[0,1,2,3,4].map(di=>{const v=getCell(bk,si,di);return`<td class="${isMyName(v)?"mc":di===tc?"tc":""}" onclick="adminEditCell('${bk}',${si},${di},'${v.replace(/'/g,"&#39;")}')" style="cursor:pointer">${v||""}</td>`;}).join("")}</tr>`).join("")}</tbody></table></div><div style="font-size:10px;color:var(--dim);text-align:center;margin-top:8px">לחצי על תא לעריכה</div>`;}
+function adminEditCell(bk,si,di,cur){openModal(`<div style="font-size:15px;font-weight:900;margin-bottom:14px;text-align:center">✏️ עריכת תא</div><div style="font-size:12px;color:rgba(255,255,255,.5);margin-bottom:10px;text-align:center">${SCHEDULE.breaks.find(b=>b.id===bk)?.label} · ${SCHEDULE.stations[si]}</div><label class="lbl">שם המורה</label><input id="ac-v" class="inp" value="${cur}" placeholder="שם מורה"/><button class="btn" onclick="saveACell('${bk}',${si},${di})" style="width:100%;padding:12px 0;background:linear-gradient(135deg,#f59e0b,#d97706);border-radius:12px;color:#fff;font-size:15px;margin-bottom:8px">שמור ✓</button><button class="btn" onclick="closeModal()" style="width:100%;padding:10px 0;background:rgba(255,255,255,.08);border-radius:12px;color:rgba(255,255,255,.6);font-size:14px">ביטול</button>`);}
+function saveACell(bk,si,di){const v=document.getElementById("ac-v")?.value||"";fbPatch("dutyOverride2",{[`${bk}_${si}_${di}`]:v});closeModal();toast("✅ עודכן!");selABk(window._abk||"a");}
+</script>
+</body>
+</html>
